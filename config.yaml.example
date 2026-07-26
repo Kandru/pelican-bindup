@@ -1,0 +1,116 @@
+# pelican-steam-updater configuration
+#
+# Sidecar files (created automatically next to this file):
+#   <name>.state.yaml  — persisted update/sync state per group
+#   <name>.lock        — prevents concurrent `run` invocations
+#   <name>.log         — optional run log (see logging: below)
+#
+# Cron recommendation: */5 * * * *  (every 5 minutes)
+# Override mode on CLI: -mode dry-run | check-only
+# Every step is always logged to stdout with timestamps.
+
+# Runtime mode: prod (default) | dry-run | check-only
+# - prod:        perform API calls, mounts, and state changes
+# - dry-run:     log what would happen, no mutations
+# - check-only:  `run` only checks Steam buildids, no restarts/sync
+mode: prod
+
+pelican:
+  # Pelican panel base URL (without /api/client — added automatically)
+  panel_url: https://panel.example.com
+
+  # Client API key (ptlc_…) with access to all servers listed below
+  api_key: ptlc_REPLACE_ME
+
+paths:
+  # Wings host directory where Pelican stores server volumes (bind-mount source/target)
+  volumes: /var/lib/pelican/volumes
+
+steam:
+  # API used to fetch remote Steam buildids (no SteamCMD needed for the check)
+  info_api: https://api.steamcmd.net/v1/info
+
+self_update:
+  # GitHub repo for `self-update` command (OWNER/repo)
+  github_repo: OWNER/pelican-docker-mount-updater
+
+  # Enable binary self-update from latest GitHub release
+  enabled: false
+
+logging:
+  # Optional sidecar log file next to this config (<name>.log). stdout is always used.
+  # Default: false
+  enabled: false
+
+  # How much history to keep in the log file:
+  #   0  = last run only (file rewritten each invocation)
+  #   N  = keep the last N hours; older lines are dropped at the start of each run
+  # Default: 0
+  retain_hours: 24
+
+discord:
+  # Optional Discord webhook for update notifications (test command sends a test message).
+  # Notifies on: main restart for Steam update, each child sync+restart during updates.
+  # Does not notify on maintenance reboots.
+  # webhook_url: https://discord.com/api/webhooks/...
+
+groups:
+  # A group = one main server + children that share its game files via bind mounts.
+  # Only the main server should download Steam updates; children receive synced files.
+  - name: cs2-ballerbude
+
+    # Embedded game profile (built into the binary). Currently available: cs2
+    profile: cs2
+
+    # How often to poll Steam for updates while idle (hours). Cron can run more often;
+    # the actual Steam API check only happens when this interval has elapsed.
+    # Default: 1
+    update_check_interval_hours: 1
+
+    # Wait this long after Steam reports an update before restarting the main server
+    # (buffers phased Steam rollouts). Default: 30
+    defer_update_minutes: 30
+
+    maintenance:
+      # Periodic hygiene reboots to reduce lag on long uptimes (skipped during updates)
+      enabled: true
+
+      # Reboot a server when empty if it has been running at least this long (hours)
+      # and was not rebooted recently. Update restarts count toward this timer.
+      # Default: 24
+      reboot_interval_hours: 2
+
+    # Main server: downloads Steam updates via its egg on restart
+    main:
+      uuid: 3328d44d-61ed-4542-a308-c63efbecb82a
+      # A2S query address used to detect if players are online (empty = safe to restart)
+      query_host: 127.0.0.1
+      query_port: 27015
+
+    # Child servers: receive bind-mounted files from main; stop → sync → start on update
+    children:
+      - uuid: a668b846-22f9-41c8-88f1-cb1326671101
+        query_host: 127.0.0.1
+        query_port: 27016
+      - uuid: ec0e85c6-e2dc-4de6-b04b-fc7d0695b738
+        query_host: 127.0.0.1
+        query_port: 27017
+      - uuid: d58f4422-62a8-48b2-8eef-51c6ee74179c
+        query_host: 127.0.0.1
+        query_port: 27018
+
+  # Example second group with different intervals:
+  # - name: cs2-other
+  #   profile: cs2
+  #   update_check_interval_hours: 24
+  #   maintenance:
+  #     enabled: true
+  #     reboot_interval_hours: 24
+  #   main:
+  #     uuid: ...
+  #     query_host: 127.0.0.1
+  #     query_port: 27020
+  #   children:
+  #     - uuid: ...
+  #       query_host: 127.0.0.1
+  #       query_port: 27021

@@ -1,0 +1,11 @@
+name: cs2
+steam_app_id: 730
+manifest_relative: steamapps/appmanifest_730.acf
+exclude_dirs:
+  - game/csgo/cfg
+  - game/csgo/addons
+  - game/bin/linuxsteamrt64/steamapps/workshop
+exclude_files:
+  - game/csgo/gamemodes_server.txt
+exclude_patterns:
+  - "*.dem"

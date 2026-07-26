@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - VERSION
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: ver
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Check tag does not exist
+        run: |
+          if git rev-parse "${{ steps.ver.outputs.tag }}" >/dev/null 2>&1; then
+            echo "Tag ${{ steps.ver.outputs.tag }} already exists"
+            exit 1
+          fi
+
+      - name: Build release artifacts
+        run: make release
+
+      - name: Create and push tag
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "${{ steps.ver.outputs.tag }}" -m "Release ${{ steps.ver.outputs.tag }}"
+          git push origin "${{ steps.ver.outputs.tag }}"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ steps.ver.outputs.tag }}" \
+            --title "Release ${{ steps.ver.outputs.tag }}" \
+            --notes "Automated release for VERSION ${{ steps.ver.outputs.version }}" \
+            dist/pelican-steam-updater_linux_amd64.tar.gz \
+            dist/pelican-steam-updater_linux_arm64.tar.gz \
+            dist/checksums.txt
+
+      - name: Prune old releases (keep 5)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPO="${{ github.repository }}"
+          COUNT=$(gh release list --repo "$REPO" --limit 100 --json tagName,createdAt --jq 'length')
+          while [ "$COUNT" -gt 5 ]; do
+            OLDEST=$(gh release list --repo "$REPO" --limit 100 --json tagName,createdAt \
+              --jq 'sort_by(.createdAt) | .[0].tagName')
+            echo "Deleting oldest release: $OLDEST"
+            gh release delete "$OLDEST" --repo "$REPO" --yes
+            git push origin ":refs/tags/$OLDEST" || true
+            COUNT=$(gh release list --repo "$REPO" --limit 100 --json tagName --jq 'length')
+          done

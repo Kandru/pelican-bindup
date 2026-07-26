@@ -1,0 +1,13 @@
+# Pelican Steam Updater — run on the Wings host as root
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Run every 5 minutes; per-group update_check_interval_hours controls Steam polling.
+# Config defaults to config.yaml next to the binary (sidecar files use the same directory).
+*/5 * * * * /opt/pelican-steam-updater/pelican-steam-updater run >>/var/log/pelican-steam-updater.log 2>&1
+
+# Re-apply bind mounts after host reboot
+@reboot /opt/pelican-steam-updater/pelican-steam-updater sync >>/var/log/pelican-steam-updater.log 2>&1
+
+# Optional weekly self-update (enable in config first)
+# 0 4 * * 0 /opt/pelican-steam-updater/pelican-steam-updater self-update >>/var/log/pelican-steam-updater.log 2>&1
