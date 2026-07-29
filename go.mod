@@ -1,4 +1,4 @@
-module github.com/derkalle4/pelican-docker-mount-updater
+module github.com/kandru/pelican-docker-mount-updater
 
 go 1.22
 

@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
+	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
 	"gopkg.in/yaml.v3"
 )
 

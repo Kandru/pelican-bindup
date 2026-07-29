@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/selfupdate"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/update"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/selfupdate"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/update"
 )
 
 var version = "dev"

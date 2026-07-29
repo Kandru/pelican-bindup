@@ -6,12 +6,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/a2s"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/mount"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-docker-mount-updater/internal/a2s"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/mount"
+	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 func (o *Orchestrator) resolveGroups(groupName string) ([]config.GroupConfig, error) {

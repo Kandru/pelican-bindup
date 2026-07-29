@@ -63,7 +63,7 @@ Children must **not** run their own SteamCMD update for the shared game tree.
 
 ## Installation
 
-1. Download the latest release binary for your architecture from [GitHub Releases](https://github.com/derkalle4/pelican-docker-mount-updater/releases), or [build locally](#building-from-source).
+1. Download the latest release binary for your architecture from [GitHub Releases](https://github.com/kandru/pelican-docker-mount-updater/releases), or [build locally](#building-from-source).
 2. Install to a directory on the Wings host, e.g. `/opt/pelican-steam-updater/`:
 
 ```bash

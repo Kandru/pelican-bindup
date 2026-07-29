@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
 )
 
 const timeLayout = "2006-01-02 15:04:05"

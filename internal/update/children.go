@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/mount"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/state"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/steam"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/mount"
+	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
+	"github.com/kandru/pelican-docker-mount-updater/internal/state"
+	"github.com/kandru/pelican-docker-mount-updater/internal/steam"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, gs *state.GroupState) error {

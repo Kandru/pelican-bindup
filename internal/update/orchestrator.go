@@ -4,13 +4,13 @@ package update
 import (
 	"fmt"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/discord"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/pelican"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/state"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/steam"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/discord"
+	"github.com/kandru/pelican-docker-mount-updater/internal/pelican"
+	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
+	"github.com/kandru/pelican-docker-mount-updater/internal/state"
+	"github.com/kandru/pelican-docker-mount-updater/internal/steam"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
 )
 
 // Orchestrator runs per-group Steam update + child mount sync ticks.

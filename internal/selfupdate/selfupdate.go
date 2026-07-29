@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
 )
 
 type Updater struct {

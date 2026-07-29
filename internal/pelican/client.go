@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 type Client struct {

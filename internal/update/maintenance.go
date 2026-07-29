@@ -3,10 +3,10 @@ package update
 import (
 	"time"
 
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/state"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
-	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/state"
+	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 func (o *Orchestrator) maybeMaintenance(group config.GroupConfig, gs *state.GroupState) {
