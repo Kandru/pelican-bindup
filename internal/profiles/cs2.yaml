@@ -2,6 +2,8 @@ name: cs2
 steam_app_id: 730
 manifest_relative: steamapps/appmanifest_730.acf
 exclude_dirs:
+  # Per-server Steamworks SDK (egg/runtime); bind-mounting from main breaks steamclient.so
+  - .steam
   - game/csgo/cfg
   - game/csgo/addons
   - game/bin/linuxsteamrt64/steamapps/workshop

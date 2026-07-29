@@ -19,6 +19,7 @@ func TestWipeNonExcluded(t *testing.T) {
 	profile := &profiles.Profile{
 		SteamAppID: 730,
 		ExcludeDirs: []string{
+			".steam",
 			"game/csgo/cfg",
 			"game/csgo/addons",
 		},
@@ -54,6 +55,7 @@ func TestWipeNonExcluded(t *testing.T) {
 	mustWrite("game/csgo/maps/de_dust2.vpk", "map")
 
 	// Excluded — must be kept.
+	mustWrite(".steam/sdk64/steamclient.so", "sdk")
 	mustWrite("game/csgo/cfg/server.cfg", "hostname child")
 	mustWrite("game/csgo/addons/metamod/metaplugins.ini", "meta")
 	mustWrite("game/csgo/gamemodes_server.txt", "modes")
@@ -89,6 +91,7 @@ func TestWipeNonExcluded(t *testing.T) {
 	assertMissing("game/csgo/maps")
 	assertMissing("game/csgo/motd.txt")
 
+	assertExists(".steam/sdk64/steamclient.so")
 	assertExists("game/csgo/cfg/server.cfg")
 	assertExists("game/csgo/addons/metamod/metaplugins.ini")
 	assertExists("game/csgo/gamemodes_server.txt")
