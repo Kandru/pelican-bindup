@@ -14,11 +14,11 @@ Linux CLI (root on Wings): one Steam **main** install; **children** get bind mou
 ## Update order
 
 1. Steam remote vs **main** volume buildid only (children share mounts — disk buildid is useless).
-2. Defer → wait empty main → restart main (SteamCMD).
+2. Defer → if main behind target: wait empty → restart main (SteamCMD); if main already on target (e.g. maintenance): Discord update notice then children.
 3. `await_children`: wait until main local ≥ target, then each child via state `child_synced[uuid]`.
 4. Per child: already marked synced → skip; else empty → stop → `mount.Sync` → start → mark synced → Discord.
 
-Idle “kids behind” = any child whose `child_synced` ≠ main local.
+Idle “kids behind” = any child whose `child_synced` ≠ main local (same defer). New children after first bootstrap stay unsynced until that path runs.
 Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
 
 ## Packages

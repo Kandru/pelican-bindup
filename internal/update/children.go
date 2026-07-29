@@ -16,14 +16,36 @@ import (
 
 func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
 	o.log.Detail("target_buildid=%s", gs.TargetBuildID)
+
+	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+	local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+	if err != nil {
+		o.log.Step(ui.StatusError, "read main buildid: %v", err)
+		return err
+	}
+
+	// Main already updated (e.g. maintenance) while we waited for empty — skip redundant restart.
+	if gs.TargetBuildID != "" && local != "" && !steam.Less(local, gs.TargetBuildID) {
+		o.log.Step(ui.StatusOK, "main already on target %s — skipping restart, syncing children", gs.TargetBuildID)
+		if !o.log.IsMutating() {
+			o.log.Step(ui.StatusDry, "would sync children")
+			return o.store.Save(group.Name, gs)
+		}
+		o.notifyUpdated(group.Name, group.Main.UUID, gs.SyncedBuildID, gs.TargetBuildID)
+		flagChildren(group, gs)
+		if err := o.store.Save(group.Name, gs); err != nil {
+			return err
+		}
+		return o.tickAwaitChildren(group, profile, gs)
+	}
+
 	if !o.serverEmpty(group.Main, "main") {
 		o.log.Step(ui.StatusWait, "main not empty — retry next run")
 		return o.store.Save(group.Name, gs)
 	}
 
 	oldBuild := gs.SyncedBuildID
-	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
-	if local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative); err == nil && local != "" {
+	if local != "" {
 		oldBuild = local
 	}
 

@@ -81,11 +81,13 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 }
 
 // bootstrapSynced seeds group + per-child markers once so first install does not mass-restart.
+// New children added later are left unsynced so the kids-behind path runs mount sync after defer.
 func (o *Orchestrator) bootstrapSynced(group config.GroupConfig, gs *state.GroupState, mainLocal string) {
 	if mainLocal == "" {
 		return
 	}
-	if gs.SyncedBuildID == "" {
+	wasUninitialized := gs.SyncedBuildID == ""
+	if wasUninitialized {
 		gs.SyncedBuildID = mainLocal
 		o.log.Detail("bootstrapped group synced_buildid=%s", mainLocal)
 	}
@@ -93,8 +95,7 @@ func (o *Orchestrator) bootstrapSynced(group config.GroupConfig, gs *state.Group
 		if _, ok := gs.ChildSynced[child.UUID]; ok {
 			continue
 		}
-		// Only backfill when group is idle and already considered fully synced to main.
-		if gs.Phase == state.PhaseIdle && gs.TargetBuildID == "" && gs.SyncedBuildID == mainLocal {
+		if wasUninitialized && gs.Phase == state.PhaseIdle && gs.TargetBuildID == "" {
 			gs.MarkChildSynced(child.UUID, mainLocal)
 			o.log.Detail("bootstrapped child %s synced=%s", util.ShortUUID(child.UUID), mainLocal)
 		}
@@ -157,13 +158,14 @@ func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *p
 		return err
 	}
 
-	// Main already on target → only children remain.
+	// Main already on target → only children remain (e.g. maintenance restarted main).
 	if local != "" && !steam.Less(local, gs.TargetBuildID) {
 		o.log.Step(ui.StatusOK, "main already on target %s — syncing children next", gs.TargetBuildID)
 		if !o.log.IsMutating() {
 			o.log.Step(ui.StatusDry, "would sync children")
 			return o.store.Save(group.Name, gs)
 		}
+		o.notifyUpdated(group.Name, group.Main.UUID, gs.SyncedBuildID, gs.TargetBuildID)
 		flagChildren(group, gs)
 		if err := o.store.Save(group.Name, gs); err != nil {
 			return err
