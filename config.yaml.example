@@ -50,8 +50,8 @@ logging:
 
 discord:
   # Optional Discord webhook for update notifications (test command sends a test message).
-  # Notifies on: main restart for Steam update, each child sync+restart during updates.
-  # Does not notify on maintenance reboots.
+  # Message: "<group> - <panel hostname> has been updated from <old> to <new>"
+  # Notifies on main + each child during Steam updates; not on maintenance reboots.
   # webhook_url: https://discord.com/api/webhooks/...
 
 groups:

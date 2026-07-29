@@ -14,11 +14,17 @@ import (
 	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
-func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, gs *state.GroupState) error {
+func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
 	o.log.Detail("target_buildid=%s", gs.TargetBuildID)
 	if !o.serverEmpty(group.Main, "main") {
 		o.log.Step(ui.StatusWait, "main not empty — retry next run")
 		return o.store.Save(group.Name, gs)
+	}
+
+	oldBuild := gs.SyncedBuildID
+	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+	if local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative); err == nil && local != "" {
+		oldBuild = local
 	}
 
 	o.log.Step(ui.StatusStart, "Restart main %s (SteamCMD updates on restart)", util.ShortUUID(group.Main.UUID))
@@ -33,7 +39,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, gs *state.Gr
 	gs.RecordRestart(group.Main.UUID)
 	flagChildren(group, gs)
 	o.log.Step(ui.StatusOK, "main restart sent — waiting for main buildid then %d child(ren)", len(gs.PendingChildren))
-	o.notifyDiscord(fmt.Sprintf("**%s** — main server restarted for Steam update (buildid %s)", group.Name, gs.TargetBuildID))
+	o.notifyUpdated(group.Name, group.Main.UUID, oldBuild, gs.TargetBuildID)
 	return o.store.Save(group.Name, gs)
 }
 
@@ -151,10 +157,11 @@ func (o *Orchestrator) syncChild(group config.GroupConfig, childUUID string, pro
 	if err := o.client.Power(childUUID, "start"); err != nil {
 		return fmt.Errorf("start: %w", err)
 	}
+	oldBuild := gs.ChildSynced[childUUID]
 	gs.RecordRestart(childUUID)
 	gs.MarkChildSynced(childUUID, target)
 	o.log.Step(ui.StatusOK, "child %s synced and started (buildid %s)", short, target)
-	o.notifyDiscord(fmt.Sprintf("**%s** — child `%s` synced and restarted (buildid %s)", group.Name, short, target))
+	o.notifyUpdated(group.Name, childUUID, oldBuild, target)
 	return nil
 }
 

@@ -11,6 +11,7 @@ import (
 	"github.com/kandru/pelican-docker-mount-updater/internal/state"
 	"github.com/kandru/pelican-docker-mount-updater/internal/steam"
 	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 // Orchestrator runs per-group Steam update + child mount sync ticks.
@@ -45,6 +46,21 @@ func (o *Orchestrator) notifyDiscord(msg string) {
 	}
 }
 
+// notifyUpdated sends: "<group> - <hostname> has been updated from <old> to <new>"
+func (o *Orchestrator) notifyUpdated(groupName, serverUUID, oldBuild, newBuild string) {
+	host, err := o.client.ServerName(serverUUID)
+	if err != nil || host == "" {
+		host = util.ShortUUID(serverUUID)
+	}
+	if oldBuild == "" {
+		oldBuild = "unknown"
+	}
+	if newBuild == "" {
+		newBuild = "unknown"
+	}
+	o.notifyDiscord(fmt.Sprintf("%s - %s has been updated from %s to %s", groupName, host, oldBuild, newBuild))
+}
+
 func (o *Orchestrator) Run() error {
 	for _, group := range o.cfg.Groups {
 		if err := o.runGroup(group); err != nil {
@@ -74,7 +90,7 @@ func (o *Orchestrator) runGroup(group config.GroupConfig) error {
 	case state.PhaseIdle:
 		return o.tickIdle(group, profile, gs)
 	case state.PhaseAwaitMainEmpty:
-		return o.tickAwaitMainEmpty(group, gs)
+		return o.tickAwaitMainEmpty(group, profile, gs)
 	case state.PhaseAwaitChildren:
 		return o.tickAwaitChildren(group, profile, gs)
 	default:

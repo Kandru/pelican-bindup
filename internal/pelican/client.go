@@ -58,6 +58,26 @@ func (c *Client) GetResources(serverUUID string) (*Resources, error) {
 	}, nil
 }
 
+// ServerName returns the panel display name for a server.
+func (c *Client) ServerName(serverUUID string) (string, error) {
+	body, err := c.do(http.MethodGet, "/servers/"+serverUUID, nil)
+	if err != nil {
+		return "", err
+	}
+	var parsed struct {
+		Attributes struct {
+			Name string `json:"name"`
+		} `json:"attributes"`
+	}
+	if err := json.Unmarshal(body, &parsed); err != nil {
+		return "", fmt.Errorf("decode server: %w", err)
+	}
+	if parsed.Attributes.Name == "" {
+		return "", fmt.Errorf("empty server name")
+	}
+	return parsed.Attributes.Name, nil
+}
+
 func (c *Client) Power(serverUUID, signal string) error {
 	_, err := c.do(http.MethodPost, "/servers/"+serverUUID+"/power", map[string]string{"signal": signal})
 	return err

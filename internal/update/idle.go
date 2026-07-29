@@ -181,7 +181,7 @@ func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *p
 	if err := o.store.Save(group.Name, gs); err != nil {
 		return err
 	}
-	return o.tickAwaitMainEmpty(group, gs)
+	return o.tickAwaitMainEmpty(group, profile, gs)
 }
 
 func (o *Orchestrator) shouldCheckUpdate(group config.GroupConfig, gs *state.GroupState) bool {
