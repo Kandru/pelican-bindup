@@ -69,9 +69,8 @@ func (l *Logger) Close() {
 }
 
 func (l *Logger) Banner(version, command string) {
-	now := time.Now().Format(timeLayout)
-	l.emit(l.cyan(fmt.Sprintf("pelican-steam-updater  v%s  ·  %s  ·  mode=%s  ·  %s", version, command, l.mode, now)),
-		fmt.Sprintf("pelican-steam-updater  v%s  ·  %s  ·  mode=%s  ·  %s", version, command, l.mode, now))
+	msg := fmt.Sprintf("pelican-steam-updater  v%s  ·  %s  ·  mode=%s", version, command, l.mode)
+	l.line(l.cyan(msg), msg)
 	l.emit("", "")
 }
 
@@ -228,10 +227,12 @@ func retainRecentLines(path string, cutoff time.Time) []string {
 	sc.Buffer(make([]byte, 0, 64*1024), 1024*1024)
 	for sc.Scan() {
 		line := sc.Text()
-		if line == "──" {
+		if line == "" || line == "──" {
 			continue
 		}
-		if t, ok := parseLineTime(line); ok && t.Before(cutoff) {
+		t, ok := parseLineTime(line)
+		if !ok || t.Before(cutoff) {
+			// Drop untimed lines (legacy blank/banner orphans) and expired entries.
 			continue
 		}
 		kept = append(kept, line)
@@ -243,11 +244,16 @@ func parseLineTime(line string) (time.Time, bool) {
 	if len(line) < len(timeLayout) {
 		return time.Time{}, false
 	}
-	t, err := time.ParseInLocation(timeLayout, line[:len(timeLayout)], time.Local)
-	if err != nil {
-		return time.Time{}, false
+	if t, err := time.ParseInLocation(timeLayout, line[:len(timeLayout)], time.Local); err == nil {
+		return t, true
 	}
-	return t, true
+	// Legacy banners put the time at the end: "... ·  2006-01-02 15:04:05"
+	if strings.HasPrefix(line, "pelican-steam-updater") {
+		if t, err := time.ParseInLocation(timeLayout, line[len(line)-len(timeLayout):], time.Local); err == nil {
+			return t, true
+		}
+	}
+	return time.Time{}, false
 }
 
 func isTTY(f *os.File) bool {
