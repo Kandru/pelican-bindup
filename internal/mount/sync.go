@@ -2,11 +2,11 @@
 package mount
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
@@ -69,26 +69,88 @@ func (s *Syncer) Sync(mainUUID, childUUID string, profile *profiles.Profile, app
 }
 
 func (s *Syncer) unmountAll(destPath string) (int, error) {
-	out, err := exec.Command("findmnt", "--raw", "--noheadings", "--output", "TARGET", "-R", destPath).Output()
+	targets, err := listMountsUnder(destPath)
 	if err != nil {
-		var exitErr *exec.ExitError
-		// findmnt exits 1 when the path has no mount points.
-		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
-			return 0, nil
-		}
-		return 0, fmt.Errorf("findmnt %s: %w", destPath, err)
+		return 0, err
 	}
 	var count int
-	for _, target := range reversed(strings.Fields(string(out))) {
-		if target == destPath {
-			continue
-		}
+	for _, target := range targets {
 		if err := exec.Command("umount", target).Run(); err != nil {
 			return count, fmt.Errorf("could not unmount %s (is the server still running?)", target)
 		}
 		count++
 	}
 	return count, nil
+}
+
+// listMountsUnder returns mount targets strictly under destPath (not destPath itself),
+// deepest-first. Uses a full findmnt listing because findmnt -R <path> returns nothing
+// when <path> itself is not a mount point (typical Pelican volume dirs).
+func listMountsUnder(destPath string) ([]string, error) {
+	out, err := exec.Command("findmnt", "--raw", "--noheadings", "--output", "TARGET").Output()
+	if err != nil {
+		return nil, fmt.Errorf("findmnt: %w", err)
+	}
+	var all []string
+	for _, line := range strings.Split(string(out), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		all = append(all, unescapeFindmnt(line))
+	}
+	return filterMountsUnder(destPath, all), nil
+}
+
+func filterMountsUnder(destPath string, targets []string) []string {
+	destPath = filepath.Clean(destPath)
+	prefix := destPath + string(os.PathSeparator)
+	var under []string
+	for _, target := range targets {
+		target = filepath.Clean(target)
+		if target == destPath {
+			continue
+		}
+		if strings.HasPrefix(target, prefix) {
+			under = append(under, target)
+		}
+	}
+	sort.Slice(under, func(i, j int) bool {
+		return len(under[i]) > len(under[j])
+	})
+	return under
+}
+
+// unescapeFindmnt decodes findmnt --raw hex escapes (e.g. \x20).
+func unescapeFindmnt(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for i := 0; i < len(s); i++ {
+		if s[i] == '\\' && i+3 < len(s) && s[i+1] == 'x' {
+			hi, ok1 := fromHex(s[i+2])
+			lo, ok2 := fromHex(s[i+3])
+			if ok1 && ok2 {
+				b.WriteByte(hi<<4 | lo)
+				i += 3
+				continue
+			}
+		}
+		b.WriteByte(s[i])
+	}
+	return b.String()
+}
+
+func fromHex(c byte) (byte, bool) {
+	switch {
+	case c >= '0' && c <= '9':
+		return c - '0', true
+	case c >= 'a' && c <= 'f':
+		return c - 'a' + 10, true
+	case c >= 'A' && c <= 'F':
+		return c - 'A' + 10, true
+	default:
+		return 0, false
+	}
 }
 
 // wipeNonExcluded deletes all non-excluded child paths so processDir can recreate
@@ -134,14 +196,6 @@ func (s *Syncer) wipeNonExcluded(dstBase, rel string, profile *profiles.Profile)
 		s.log.Detail("wiped: %s", itemRel)
 	}
 	return removed, nil
-}
-
-func reversed(ss []string) []string {
-	out := make([]string, len(ss))
-	for i, s := range ss {
-		out[len(ss)-1-i] = s
-	}
-	return out
 }
 
 func (s *Syncer) processDir(srcBase, dstBase, rel string, profile *profiles.Profile) (mounted, skipped int, err error) {

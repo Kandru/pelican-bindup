@@ -106,3 +106,36 @@ func TestUnmountAllNoMounts(t *testing.T) {
 		t.Fatalf("unmounted=%d, want 0", n)
 	}
 }
+
+func TestFilterMountsUnder(t *testing.T) {
+	dest := "/var/lib/pelican/volumes/child-uuid"
+	got := filterMountsUnder(dest, []string{
+		"/",
+		"/var/lib/pelican/volumes",
+		dest, // volume root itself — skip
+		dest + "/.steam",
+		dest + "/game/csgo/pak01_dir.vpk",
+		dest + "/game",
+		"/var/lib/pelican/volumes/other/.steam",
+		dest + "extra/not-under", // prefix false positive guard
+	})
+	want := []string{
+		dest + "/game/csgo/pak01_dir.vpk",
+		dest + "/.steam",
+		dest + "/game",
+	}
+	if len(got) != len(want) {
+		t.Fatalf("got %v, want %v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("got %v, want %v", got, want)
+		}
+	}
+}
+
+func TestUnescapeFindmnt(t *testing.T) {
+	if got := unescapeFindmnt(`/path/with\x20space`); got != "/path/with space" {
+		t.Fatalf("got %q", got)
+	}
+}
