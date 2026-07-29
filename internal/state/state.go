@@ -18,12 +18,14 @@ const (
 )
 
 type GroupState struct {
-	Phase            Phase             `yaml:"phase"`
-	TargetBuildID    string            `yaml:"target_buildid,omitempty"`
-	UpdateDetectedAt time.Time         `yaml:"update_detected_at,omitempty"`
-	LastUpdateCheck  time.Time         `yaml:"last_update_check,omitempty"`
-	PendingChildren  []string          `yaml:"pending_children,omitempty"`
-	LastMaintenance  map[string]string `yaml:"last_maintenance,omitempty"`
+	Phase               Phase             `yaml:"phase"`
+	TargetBuildID       string            `yaml:"target_buildid,omitempty"`
+	CachedRemoteBuildID string            `yaml:"cached_remote_buildid,omitempty"`
+	SyncedBuildID       string            `yaml:"synced_buildid,omitempty"`
+	UpdateDetectedAt    time.Time         `yaml:"update_detected_at,omitempty"`
+	LastUpdateCheck     time.Time         `yaml:"last_update_check,omitempty"`
+	PendingChildren     []string          `yaml:"pending_children,omitempty"`
+	LastMaintenance     map[string]string `yaml:"last_maintenance,omitempty"`
 }
 
 type file struct {
@@ -112,12 +114,6 @@ func newGroupState() *GroupState {
 }
 
 func normalizeGroupState(gs *GroupState) {
-	switch gs.Phase {
-	case "await_master_empty":
-		gs.Phase = PhaseAwaitMainEmpty
-	case "await_master_update", "await_main_update":
-		gs.Phase = PhaseAwaitChildren
-	}
 	if gs.LastMaintenance == nil {
 		gs.LastMaintenance = map[string]string{}
 	}

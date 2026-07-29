@@ -42,7 +42,7 @@ func (c *Checker) Check(appID int, mainVolume, manifestRelative string) (*BuildI
 	if err != nil {
 		return nil, err
 	}
-	local, err := c.localBuildID(mainVolume, manifestRelative)
+	local, err := c.LocalBuildID(mainVolume, manifestRelative)
 	if err != nil {
 		return nil, err
 	}
@@ -117,8 +117,8 @@ func parseRemoteBuildID(body []byte, appID int) (string, error) {
 	return latest, nil
 }
 
-func (c *Checker) localBuildID(mainVolume, manifestRelative string) (string, error) {
-	path := filepath.Join(mainVolume, manifestRelative)
+func (c *Checker) LocalBuildID(volume, manifestRelative string) (string, error) {
+	path := filepath.Join(volume, manifestRelative)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
