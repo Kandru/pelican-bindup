@@ -43,11 +43,11 @@ idle
   └─ Steam check (every N hours)
        └─ update found → defer (default 30 min)
             └─ main empty? → restart main (SteamCMD updates on restart)
-                 └─ for each child (when empty): stop → sync mounts → start
+                 └─ for each child: if behind target and empty → stop → sync mounts → start
                       └─ idle
 ```
 
-While an update is in progress, maintenance reboots are skipped. Cron should run every few minutes (e.g. every 5); per-group settings control how often Steam is actually polled.
+Each child is checked separately via its volume buildid; already-synced siblings are skipped. While an update is in progress, maintenance reboots are skipped. Cron should run every few minutes (e.g. every 5); per-group settings control how often Steam is actually polled.
 
 State is persisted in a sidecar file so each cron tick can resume where the last run left off.
 
@@ -63,7 +63,7 @@ Children must **not** run their own SteamCMD update for the shared game tree.
 
 ## Installation
 
-1. Download the latest release binary for your architecture from [GitHub Releases](https://github.com/OWNER/pelican-docker-mount-updater/releases), or [build locally](#building-from-source).
+1. Download the latest release binary for your architecture from [GitHub Releases](https://github.com/derkalle4/pelican-docker-mount-updater/releases), or [build locally](#building-from-source).
 2. Install to a directory on the Wings host, e.g. `/opt/pelican-steam-updater/`:
 
 ```bash

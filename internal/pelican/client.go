@@ -1,3 +1,4 @@
+// Package pelican talks to the Pelican Client API (power, resources).
 package pelican
 
 import (
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/util"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
 )
 
 type Client struct {

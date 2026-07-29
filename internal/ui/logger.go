@@ -1,3 +1,4 @@
+// Package ui provides colored step logging and optional sidecar log files.
 package ui
 
 import (
@@ -9,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/config"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
 )
 
 const timeLayout = "2006-01-02 15:04:05"
@@ -263,10 +264,3 @@ func (l *Logger) colored(text, code string) string {
 
 func (l *Logger) cyan(s string) string { return l.colored(s, "\x1b[36m") }
 func (l *Logger) dim(s string) string  { return l.colored(s, "\x1b[2m") }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}

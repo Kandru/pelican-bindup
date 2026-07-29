@@ -1,3 +1,4 @@
+// Package selfupdate replaces the binary from the latest GitHub release.
 package selfupdate
 
 import (
@@ -13,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/ui"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
 )
 
 type Updater struct {

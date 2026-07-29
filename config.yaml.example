@@ -31,8 +31,8 @@ steam:
   info_api: https://api.steamcmd.net/v1/info
 
 self_update:
-  # GitHub repo for `self-update` command (OWNER/repo)
-  github_repo: OWNER/pelican-docker-mount-updater
+  # GitHub repo for `self-update` command (owner/repo)
+  github_repo: derkalle4/pelican-docker-mount-updater
 
   # Enable binary self-update from latest GitHub release
   enabled: false

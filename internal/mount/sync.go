@@ -1,3 +1,4 @@
+// Package mount bind-mounts main game files onto child volumes with profile exclusions.
 package mount
 
 import (
@@ -7,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/profiles"
-	"github.com/kalle/pelican-docker-mount-updater/internal/ui"
-	"github.com/kalle/pelican-docker-mount-updater/internal/util"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/util"
 )
 
 type Syncer struct {

@@ -1,3 +1,4 @@
+// Package discord sends optional webhook notifications.
 package discord
 
 import (

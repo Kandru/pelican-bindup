@@ -1,5 +1,6 @@
 //go:build linux
 
+// Command pelican-steam-updater: cron CLI for Pelican Steam main/child mount sync.
 package main
 
 import (
@@ -7,10 +8,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/config"
-	"github.com/kalle/pelican-docker-mount-updater/internal/selfupdate"
-	"github.com/kalle/pelican-docker-mount-updater/internal/ui"
-	"github.com/kalle/pelican-docker-mount-updater/internal/update"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/config"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/selfupdate"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/ui"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/update"
 )
 
 var version = "dev"

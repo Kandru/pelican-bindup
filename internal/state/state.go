@@ -1,3 +1,4 @@
+// Package state persists per-group update phase in a YAML sidecar.
 package state
 
 import (

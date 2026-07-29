@@ -1,0 +1,13 @@
+---
+description: pelican-steam-updater agent constraints
+alwaysApply: true
+---
+
+# Project rules
+
+Read `AGENTS.md` for FSM, packages, invariants.
+
+- Prefer small same-package files in `internal/update` (no god files).
+- Do not change A2S fail-open (unreachable = empty) or per-child buildid gate without explicit ask.
+- Only `prod` mutates; dry-run/check-only must stay non-mutating.
+- Keep modules tiny; Linux-only binary on Wings as root.

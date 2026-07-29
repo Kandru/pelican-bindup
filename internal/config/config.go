@@ -1,3 +1,4 @@
+// Package config loads and validates YAML config plus sidecar paths.
 package config
 
 import (
@@ -5,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/kalle/pelican-docker-mount-updater/internal/profiles"
+	"github.com/derkalle4/pelican-docker-mount-updater/internal/profiles"
 	"gopkg.in/yaml.v3"
 )
 
@@ -41,10 +42,6 @@ type LoggingConfig struct {
 
 type DiscordConfig struct {
 	WebhookURL string `yaml:"webhook_url"`
-}
-
-func (c *DiscordConfig) Enabled() bool {
-	return c.WebhookURL != ""
 }
 
 type PelicanConfig struct {
@@ -175,10 +172,6 @@ func (c *Config) validate() error {
 		}
 	}
 	return nil
-}
-
-func (c *Config) LoadProfile(name string) (*profiles.Profile, error) {
-	return profiles.Load(name)
 }
 
 func (c *Config) GroupByName(name string) (*GroupConfig, error) {

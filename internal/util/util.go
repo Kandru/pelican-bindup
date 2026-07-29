@@ -1,3 +1,4 @@
+// Package util holds tiny shared string helpers.
 package util
 
 import "strings"

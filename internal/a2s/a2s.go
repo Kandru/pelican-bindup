@@ -1,3 +1,4 @@
+// Package a2s queries Source A2S_INFO player counts over UDP.
 package a2s
 
 import (
@@ -14,16 +15,6 @@ var infoRequest = []byte{
 // Query returns current and max player counts from an A2S_INFO response.
 func Query(host string, port int) (players, maxPlayers int, err error) {
 	return queryInfo(host, port)
-}
-
-// IsEmpty reports whether the server has no players.
-// Unreachable servers are treated as empty (safe to restart).
-func IsEmpty(host string, port int) (empty bool, players int, err error) {
-	players, _, err = queryInfo(host, port)
-	if err != nil {
-		return true, 0, err
-	}
-	return players == 0, players, nil
 }
 
 func queryInfo(host string, port int) (players, maxPlayers int, err error) {

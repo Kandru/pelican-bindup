@@ -1,3 +1,4 @@
+// Package profiles loads embedded per-game sync exclusion rules.
 package profiles
 
 import (

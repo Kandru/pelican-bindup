@@ -1,3 +1,4 @@
+// Package steam reads remote/local Steam buildids and compares them.
 package steam
 
 import (
@@ -50,14 +51,18 @@ func (c *Checker) Check(appID int, mainVolume, manifestRelative string) (*BuildI
 	if remote == "" {
 		return info, nil
 	}
-	if local == "" {
-		info.Update = true
-		return info, nil
-	}
-	ri, _ := strconv.ParseInt(remote, 10, 64)
-	li, _ := strconv.ParseInt(local, 10, 64)
-	info.Update = ri > li
+	info.Update = local == "" || Less(local, remote)
 	return info, nil
+}
+
+// Less reports whether buildid a is older than b (numeric, string fallback).
+func Less(a, b string) bool {
+	ai, aerr := strconv.ParseInt(a, 10, 64)
+	bi, berr := strconv.ParseInt(b, 10, 64)
+	if aerr != nil || berr != nil {
+		return a < b
+	}
+	return ai < bi
 }
 
 func (c *Checker) remoteBuildID(appID int) (string, error) {
