@@ -149,6 +149,13 @@ func (o *Orchestrator) Status() error {
 		if !gs.UpdateDetectedAt.IsZero() {
 			o.log.Detail("update_detected_at=%s", gs.UpdateDetectedAt.Local().Format("2006-01-02 15:04:05"))
 		}
+		for _, child := range group.Children {
+			synced := gs.ChildSynced[child.UUID]
+			if synced == "" {
+				synced = "(none)"
+			}
+			o.log.Detail("child %s synced=%s", util.ShortUUID(child.UUID), synced)
+		}
 		if len(gs.PendingChildren) > 0 {
 			o.log.Detail("pending_children=%d", len(gs.PendingChildren))
 		}

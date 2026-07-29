@@ -21,7 +21,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, gs *state.Gr
 		return o.store.Save(group.Name, gs)
 	}
 
-	o.log.Step(ui.StatusStart, "Restart main %s", util.ShortUUID(group.Main.UUID))
+	o.log.Step(ui.StatusStart, "Restart main %s (SteamCMD updates on restart)", util.ShortUUID(group.Main.UUID))
 	if !o.log.IsMutating() {
 		o.log.Step(ui.StatusDry, "would restart main %s", util.ShortUUID(group.Main.UUID))
 		return o.store.Save(group.Name, gs)
@@ -32,7 +32,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, gs *state.Gr
 	}
 	gs.RecordRestart(group.Main.UUID)
 	flagChildren(group, gs)
-	o.log.Step(ui.StatusOK, "main restart sent — %d child(ren) pending sync", len(gs.PendingChildren))
+	o.log.Step(ui.StatusOK, "main restart sent — waiting for main buildid then %d child(ren)", len(gs.PendingChildren))
 	o.notifyDiscord(fmt.Sprintf("**%s** — main server restarted for Steam update (buildid %s)", group.Name, gs.TargetBuildID))
 	return o.store.Save(group.Name, gs)
 }
@@ -56,14 +56,28 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 	}
 
 	target := gs.TargetBuildID
+	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+	mainLocal, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+	if err != nil {
+		o.log.Step(ui.StatusError, "read main buildid: %v", err)
+		return err
+	}
 	if target == "" {
-		mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
-		if local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative); err == nil {
-			target = local
-		}
+		target = mainLocal
 	}
 
-	o.log.Detail("pending_children=%d  target=%s", len(gs.PendingChildren), target)
+	// Do not touch children until main has finished updating to the target buildid.
+	if target != "" && (mainLocal == "" || steam.Less(mainLocal, target)) {
+		o.log.Step(ui.StatusWait, "waiting for main update (local=%s target=%s)", mainLocal, target)
+		return o.store.Save(group.Name, gs)
+	}
+	if target == "" {
+		o.log.Step(ui.StatusWait, "waiting for main buildid after restart")
+		return o.store.Save(group.Name, gs)
+	}
+
+	o.log.Step(ui.StatusOK, "main on target %s — checking children", target)
+	o.log.Detail("pending_children=%d", len(gs.PendingChildren))
 
 	if !o.log.IsMutating() {
 		for _, id := range gs.PendingChildren {
@@ -71,8 +85,8 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 			if child == nil {
 				continue
 			}
-			if target != "" && !o.childNeedsSync(id, profile, target) {
-				o.log.Step(ui.StatusOK, "child %s already on buildid %s", util.ShortUUID(id), target)
+			if !gs.ChildNeedsSync(id, target) {
+				o.log.Step(ui.StatusOK, "child %s already synced to %s", util.ShortUUID(id), target)
 				continue
 			}
 			o.log.Step(ui.StatusDry, "would stop → sync → start child %s (%s:%d)",
@@ -91,19 +105,20 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 			o.log.Step(ui.StatusWarn, "unknown child %s — removing from pending", util.ShortUUID(childUUID))
 			continue
 		}
+		short := util.ShortUUID(childUUID)
 
-		if target != "" && !o.childNeedsSync(childUUID, profile, target) {
-			bid, _ := o.childBuildID(childUUID, profile)
-			o.log.Step(ui.StatusOK, "child %s already on buildid %s — skip", util.ShortUUID(childUUID), bid)
+		if !gs.ChildNeedsSync(childUUID, target) {
+			o.log.Step(ui.StatusOK, "child %s already synced to %s — skip", short, target)
 			continue
 		}
 
-		if !o.serverEmpty(*child, "child "+util.ShortUUID(childUUID)) {
+		o.log.Step(ui.StatusStart, "child %s needs sync to %s", short, target)
+		if !o.serverEmpty(*child, "child "+short) {
 			remaining = append(remaining, childUUID)
 			continue
 		}
-		if err := o.syncChild(group, childUUID, profile, syncer, gs); err != nil {
-			o.log.Step(ui.StatusError, "child %s: %v", util.ShortUUID(childUUID), err)
+		if err := o.syncChild(group, childUUID, profile, syncer, gs, target); err != nil {
+			o.log.Step(ui.StatusError, "child %s: %v", short, err)
 			remaining = append(remaining, childUUID)
 		}
 	}
@@ -116,24 +131,7 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 	return o.store.Save(group.Name, gs)
 }
 
-func (o *Orchestrator) childBuildID(childUUID string, profile *profiles.Profile) (string, error) {
-	vol := filepath.Join(o.cfg.Paths.Volumes, childUUID)
-	return o.steam.LocalBuildID(vol, profile.ManifestRelative)
-}
-
-// childNeedsSync is true when the child volume has no buildid or an older one than target.
-func (o *Orchestrator) childNeedsSync(childUUID string, profile *profiles.Profile, target string) bool {
-	if target == "" {
-		return true
-	}
-	bid, err := o.childBuildID(childUUID, profile)
-	if err != nil || bid == "" {
-		return true
-	}
-	return steam.Less(bid, target)
-}
-
-func (o *Orchestrator) syncChild(group config.GroupConfig, childUUID string, profile *profiles.Profile, syncer *mount.Syncer, gs *state.GroupState) error {
+func (o *Orchestrator) syncChild(group config.GroupConfig, childUUID string, profile *profiles.Profile, syncer *mount.Syncer, gs *state.GroupState, target string) error {
 	short := util.ShortUUID(childUUID)
 	o.log.Step(ui.StatusStart, "Stop child %s", short)
 	if err := o.client.Power(childUUID, "stop"); err != nil {
@@ -154,8 +152,9 @@ func (o *Orchestrator) syncChild(group config.GroupConfig, childUUID string, pro
 		return fmt.Errorf("start: %w", err)
 	}
 	gs.RecordRestart(childUUID)
-	o.log.Step(ui.StatusOK, "child %s started", short)
-	o.notifyDiscord(fmt.Sprintf("**%s** — child `%s` synced and restarted (buildid %s)", group.Name, short, gs.TargetBuildID))
+	gs.MarkChildSynced(childUUID, target)
+	o.log.Step(ui.StatusOK, "child %s synced and started (buildid %s)", short, target)
+	o.notifyDiscord(fmt.Sprintf("**%s** — child `%s` synced and restarted (buildid %s)", group.Name, short, target))
 	return nil
 }
 

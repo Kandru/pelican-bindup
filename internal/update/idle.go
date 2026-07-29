@@ -9,6 +9,7 @@ import (
 	"github.com/kandru/pelican-docker-mount-updater/internal/state"
 	"github.com/kandru/pelican-docker-mount-updater/internal/steam"
 	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
 func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
@@ -29,7 +30,7 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 	var remote, local string
 
 	if o.shouldCheckUpdate(group, gs) {
-		o.log.Step(ui.StatusStart, "Check Steam buildid (app %d)", profile.SteamAppID)
+		o.log.Step(ui.StatusStart, "Check Steam buildid on main (app %d)", profile.SteamAppID)
 		info, err := o.steam.Check(profile.SteamAppID, mainVol, profile.ManifestRelative)
 		gs.LastUpdateCheck = time.Now().UTC()
 		if err != nil {
@@ -55,22 +56,19 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 		remote = gs.CachedRemoteBuildID
 	}
 
-	o.log.Detail("remote=%s  local=%s  synced=%s", remote, local, gs.SyncedBuildID)
-
-	if local != "" && gs.SyncedBuildID == "" {
-		gs.SyncedBuildID = local
-		o.log.Detail("bootstrapped synced_buildid=%s", local)
-	}
+	o.log.Detail("main remote=%s  local=%s  group_synced=%s", remote, local, gs.SyncedBuildID)
+	o.bootstrapSynced(group, gs, local)
+	o.logChildSyncStatus(group, gs, local)
 
 	mainBehind := remote != "" && (local == "" || steam.Less(local, remote))
-	kidsBehind := local != "" && o.anyChildBehind(group, profile, local)
+	kidsBehind := local != "" && o.anyChildBehind(group, gs, local)
 
 	switch {
 	case mainBehind:
-		o.log.Step(ui.StatusOK, "update available (buildid %s)", remote)
+		o.log.Step(ui.StatusOK, "main update available (buildid %s) — will update main first", remote)
 		o.recordPending(group, gs, remote)
 	case kidsBehind:
-		o.log.Step(ui.StatusOK, "children behind main (buildid %s)", local)
+		o.log.Step(ui.StatusOK, "main on %s — children still need sync", local)
 		o.recordPending(group, gs, local)
 	default:
 		o.log.Step(ui.StatusOK, "no update needed")
@@ -82,9 +80,49 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 	return nil
 }
 
-func (o *Orchestrator) anyChildBehind(group config.GroupConfig, profile *profiles.Profile, target string) bool {
+// bootstrapSynced seeds group + per-child markers once so first install does not mass-restart.
+func (o *Orchestrator) bootstrapSynced(group config.GroupConfig, gs *state.GroupState, mainLocal string) {
+	if mainLocal == "" {
+		return
+	}
+	if gs.SyncedBuildID == "" {
+		gs.SyncedBuildID = mainLocal
+		o.log.Detail("bootstrapped group synced_buildid=%s", mainLocal)
+	}
 	for _, child := range group.Children {
-		if o.childNeedsSync(child.UUID, profile, target) {
+		if _, ok := gs.ChildSynced[child.UUID]; ok {
+			continue
+		}
+		// Only backfill when group is idle and already considered fully synced to main.
+		if gs.Phase == state.PhaseIdle && gs.TargetBuildID == "" && gs.SyncedBuildID == mainLocal {
+			gs.MarkChildSynced(child.UUID, mainLocal)
+			o.log.Detail("bootstrapped child %s synced=%s", util.ShortUUID(child.UUID), mainLocal)
+		}
+	}
+}
+
+func (o *Orchestrator) logChildSyncStatus(group config.GroupConfig, gs *state.GroupState, target string) {
+	if target == "" || len(group.Children) == 0 {
+		return
+	}
+	o.log.Step(ui.StatusStart, "Check children vs main buildid %s", target)
+	for _, child := range group.Children {
+		short := util.ShortUUID(child.UUID)
+		synced := gs.ChildSynced[child.UUID]
+		if synced == "" {
+			synced = "(none)"
+		}
+		if gs.ChildNeedsSync(child.UUID, target) {
+			o.log.Detail("child %s  synced=%s  needs sync", short, synced)
+		} else {
+			o.log.Detail("child %s  synced=%s  ok", short, synced)
+		}
+	}
+}
+
+func (o *Orchestrator) anyChildBehind(group config.GroupConfig, gs *state.GroupState, target string) bool {
+	for _, child := range group.Children {
+		if gs.ChildNeedsSync(child.UUID, target) {
 			return true
 		}
 	}
@@ -119,8 +157,9 @@ func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *p
 		return err
 	}
 
+	// Main already on target → only children remain.
 	if local != "" && !steam.Less(local, gs.TargetBuildID) {
-		o.log.Step(ui.StatusOK, "main already on target %s — syncing children", gs.TargetBuildID)
+		o.log.Step(ui.StatusOK, "main already on target %s — syncing children next", gs.TargetBuildID)
 		if !o.log.IsMutating() {
 			o.log.Step(ui.StatusDry, "would sync children")
 			return o.store.Save(group.Name, gs)

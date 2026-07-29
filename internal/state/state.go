@@ -22,7 +22,8 @@ type GroupState struct {
 	Phase               Phase             `yaml:"phase"`
 	TargetBuildID       string            `yaml:"target_buildid,omitempty"`
 	CachedRemoteBuildID string            `yaml:"cached_remote_buildid,omitempty"`
-	SyncedBuildID       string            `yaml:"synced_buildid,omitempty"`
+	SyncedBuildID       string            `yaml:"synced_buildid,omitempty"` // group done marker (= main+all children)
+	ChildSynced         map[string]string `yaml:"child_synced,omitempty"`  // child UUID → last synced buildid
 	UpdateDetectedAt    time.Time         `yaml:"update_detected_at,omitempty"`
 	LastUpdateCheck     time.Time         `yaml:"last_update_check,omitempty"`
 	PendingChildren     []string          `yaml:"pending_children,omitempty"`
@@ -110,6 +111,7 @@ func (s *Store) writeFile(f *file) error {
 func newGroupState() *GroupState {
 	return &GroupState{
 		Phase:           PhaseIdle,
+		ChildSynced:     map[string]string{},
 		LastMaintenance: map[string]string{},
 	}
 }
@@ -118,6 +120,9 @@ func normalizeGroupState(gs *GroupState) {
 	if gs.LastMaintenance == nil {
 		gs.LastMaintenance = map[string]string{}
 	}
+	if gs.ChildSynced == nil {
+		gs.ChildSynced = map[string]string{}
+	}
 	if gs.Phase == "" {
 		gs.Phase = PhaseIdle
 	}
@@ -125,6 +130,22 @@ func normalizeGroupState(gs *GroupState) {
 
 func (gs *GroupState) RecordRestart(serverUUID string) {
 	gs.LastMaintenance[serverUUID] = time.Now().UTC().Format(time.RFC3339)
+}
+
+func (gs *GroupState) MarkChildSynced(childUUID, buildID string) {
+	if gs.ChildSynced == nil {
+		gs.ChildSynced = map[string]string{}
+	}
+	gs.ChildSynced[childUUID] = buildID
+}
+
+// ChildNeedsSync is true until this child was recorded as synced to target.
+// Bind-mounted volumes share main's manifest, so disk buildid cannot be used.
+func (gs *GroupState) ChildNeedsSync(childUUID, target string) bool {
+	if target == "" {
+		return true
+	}
+	return gs.ChildSynced[childUUID] != target
 }
 
 func (gs *GroupState) ClearUpdatePending() {

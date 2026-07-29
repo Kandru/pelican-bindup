@@ -11,15 +11,15 @@ Linux CLI (root on Wings): one Steam **main** install; **children** get bind mou
 - Prod only mutates (`Logger.IsMutating`); dry-run/check-only do not.
 - `run` takes flock on `<config>.lock`.
 
-## Per-child sync
+## Update order
 
-Each pending child: read volume `LocalBuildID` vs target/main.
-- already on target → skip (no Discord)
-- behind + empty → stop → `mount.Sync` → start → Discord (if webhook set)
-- behind + players → stay pending
+1. Steam remote vs **main** volume buildid only (children share mounts — disk buildid is useless).
+2. Defer → wait empty main → restart main (SteamCMD).
+3. `await_children`: wait until main local ≥ target, then each child via state `child_synced[uuid]`.
+4. Per child: already marked synced → skip; else empty → stop → `mount.Sync` → start → mark synced → Discord.
 
-Idle “kids behind” scans each child buildid (not only group `synced_buildid`).
-Manual `sync` force-applies mounts (no buildid skip). Maintenance: no Discord.
+Idle “kids behind” = any child whose `child_synced` ≠ main local.
+Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
 
 ## Packages
 
@@ -44,7 +44,8 @@ Manual `sync` force-applies mounts (no buildid skip). Maintenance: no Discord.
 - Bind mounts need root; volumes under `paths.volumes`.
 - Children must not run their own SteamCMD for the shared tree.
 - Keep `internal/update` as small same-package files; don’t merge into one god file.
-- Don’t change A2S fail-open or per-child buildid gate without an explicit ask.
+- Don’t change A2S fail-open or state-based per-child sync without an explicit ask.
+- Never use child volume LocalBuildID to decide sync (bind mounts mirror main).
 
 ## Edit map
 

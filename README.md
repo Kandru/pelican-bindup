@@ -43,11 +43,12 @@ idle
   └─ Steam check (every N hours)
        └─ update found → defer (default 30 min)
             └─ main empty? → restart main (SteamCMD updates on restart)
-                 └─ for each child: if behind target and empty → stop → sync mounts → start
-                      └─ idle
+                 └─ wait until main buildid is current
+                      └─ for each child (state not yet synced, when empty): stop → sync mounts → start
+                           └─ idle
 ```
 
-Each child is checked separately via its volume buildid; already-synced siblings are skipped. While an update is in progress, maintenance reboots are skipped. Cron should run every few minutes (e.g. every 5); per-group settings control how often Steam is actually polled.
+Steam is checked on the **main** install only. Children are tracked per-server in state (`child_synced`); already-synced siblings are skipped. While an update is in progress, maintenance reboots are skipped. Cron should run every few minutes (e.g. every 5); per-group settings control how often Steam is actually polled.
 
 State is persisted in a sidecar file so each cron tick can resume where the last run left off.
 
