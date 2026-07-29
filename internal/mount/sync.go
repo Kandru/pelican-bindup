@@ -2,6 +2,7 @@
 package mount
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -35,7 +36,7 @@ func (s *Syncer) Sync(mainUUID, childUUID string, profile *profiles.Profile, app
 	s.log.Detail("child=%s", childPath)
 
 	if !apply {
-		s.log.Step(ui.StatusDry, "would unmount, prune stale files, and recreate bind mounts for %s", util.ShortUUID(childUUID))
+		s.log.Step(ui.StatusDry, "would unmount, wipe non-excluded files, and recreate bind mounts for %s", util.ShortUUID(childUUID))
 		return nil
 	}
 	if os.Geteuid() != 0 {
@@ -51,12 +52,12 @@ func (s *Syncer) Sync(mainUUID, childUUID string, profile *profiles.Profile, app
 	}
 	s.log.Detail("unmounted %d mount point(s)", count)
 
-	removed, err := s.removeStale(mainPath, childPath, "", profile)
+	removed, err := s.wipeNonExcluded(childPath, "", profile)
 	if err != nil {
 		return err
 	}
 	if removed > 0 {
-		s.log.Detail("removed %d stale path(s)", removed)
+		s.log.Detail("wiped %d path(s)", removed)
 	}
 
 	mounted, skipped, err := s.processDir(mainPath, childPath, "", profile)
@@ -70,7 +71,12 @@ func (s *Syncer) Sync(mainUUID, childUUID string, profile *profiles.Profile, app
 func (s *Syncer) unmountAll(destPath string) (int, error) {
 	out, err := exec.Command("findmnt", "--raw", "--noheadings", "--output", "TARGET", "-R", destPath).Output()
 	if err != nil {
-		return 0, nil
+		var exitErr *exec.ExitError
+		// findmnt exits 1 when the path has no mount points.
+		if errors.As(err, &exitErr) && exitErr.ExitCode() == 1 {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("findmnt %s: %w", destPath, err)
 	}
 	var count int
 	for _, target := range reversed(strings.Fields(string(out))) {
@@ -85,8 +91,9 @@ func (s *Syncer) unmountAll(destPath string) (int, error) {
 	return count, nil
 }
 
-// removeStale deletes non-excluded child paths that no longer exist on main.
-func (s *Syncer) removeStale(srcBase, dstBase, rel string, profile *profiles.Profile) (int, error) {
+// wipeNonExcluded deletes all non-excluded child paths so processDir can recreate
+// bind-mount targets from main. Excluded trees are left intact.
+func (s *Syncer) wipeNonExcluded(dstBase, rel string, profile *profiles.Profile) (int, error) {
 	dstDir := dstBase
 	if rel != "" {
 		dstDir = filepath.Join(dstBase, rel)
@@ -109,25 +116,22 @@ func (s *Syncer) removeStale(srcBase, dstBase, rel string, profile *profiles.Pro
 			continue
 		}
 
-		srcPath := filepath.Join(srcBase, itemRel)
 		dstPath := filepath.Join(dstBase, itemRel)
 
-		if _, err := os.Stat(srcPath); os.IsNotExist(err) {
-			if err := os.RemoveAll(dstPath); err != nil {
-				return removed, err
-			}
-			removed++
-			s.log.Detail("removed stale: %s", itemRel)
-			continue
-		}
-
 		if entry.IsDir() && profile.DirContainsExclusions(itemRel) {
-			n, err := s.removeStale(srcBase, dstBase, itemRel, profile)
+			n, err := s.wipeNonExcluded(dstBase, itemRel, profile)
 			removed += n
 			if err != nil {
 				return removed, err
 			}
+			continue
 		}
+
+		if err := os.RemoveAll(dstPath); err != nil {
+			return removed, err
+		}
+		removed++
+		s.log.Detail("wiped: %s", itemRel)
 	}
 	return removed, nil
 }
