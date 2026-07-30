@@ -246,6 +246,7 @@ Sync profiles define which files are bind-mounted and which are left independent
 |---------|------|--------------|----------------|-------|
 | `cs2` | Counter-Strike 2 | 730 | `a2s` (UDP) | Full Steam update FSM + child sync |
 | `bfbc2` | Battlefield: Bad Company 2 | — | `bfbc2` (TCP RCON) | No Steam poll; maintenance empty-restarts; child sync via `sync` |
+| `warfork` | Warfork | 1136510 | `quake3` (UDP) | Full Steam update FSM; `basewf` shares only `data*.pk3` / `modules*.pk3` |
 
 Profile YAML fields:
 
@@ -253,12 +254,13 @@ Profile YAML fields:
 |-------|----------|-------------|
 | `steam_app_id` | no | When set, enables Steam buildid polling and the update FSM. Omit for non-Steam games. |
 | `manifest_relative` | no | Path under the main volume to `appmanifest_*.acf` (defaults when `steam_app_id` is set). |
-| `query_protocol` | no | `a2s` (default) or `bfbc2`. Selects how emptiness checks query player counts. |
+| `query_protocol` | no | `a2s` (default), `bfbc2`, or `quake3`. Selects how emptiness checks query player counts. |
 | `exclude_dirs` / `exclude_files` / `exclude_patterns` | no | Paths left independent per child (not bind-mounted from main). |
+| `mount_only` | no | Under listed dirs, only basename patterns are mounted; everything else in that dir stays per-child. |
 
-For BFBC2, set `query_port` to each server's **RCON port** (TCP). `serverInfo` does not need an RCON password. After updating the main install manually, run `sync --group <name>` to re-apply mounts to children.
+For BFBC2, set `query_port` to each server's **RCON port** (TCP). `serverInfo` does not need an RCON password. For Warfork, set `query_port` to each server's **game UDP port** (default `44400`). After updating the main install manually, run `sync --group <name>` to re-apply mounts to children.
 
-To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml) and [`internal/profiles/bfbc2.yaml`](internal/profiles/bfbc2.yaml) for examples.
+To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml), [`internal/profiles/bfbc2.yaml`](internal/profiles/bfbc2.yaml), and [`internal/profiles/warfork.yaml`](internal/profiles/warfork.yaml) for examples.
 
 ## Building from source
 

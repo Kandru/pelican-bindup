@@ -59,7 +59,7 @@ groups:
   # Only the main server should download Steam updates; children receive synced files.
   - name: cs2-ballerbude
 
-    # Embedded game profile (built into the binary). Available: cs2, bfbc2
+    # Embedded game profile (built into the binary). Available: cs2, bfbc2, warfork
     profile: cs2
 
     # How often to poll Steam for updates while idle (hours). Cron can run more often;

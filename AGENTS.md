@@ -9,7 +9,7 @@ Profiles without `steam_app_id` skip Steam polling and the update FSM; idle tick
 `idle` → (defer) → `await_main_empty` → restart main → `await_children` → idle
 
 - Steam poll gated by `update_check_interval_hours`; defer by `defer_update_minutes`.
-- Query fail-open (A2S / BFBC2): unreachable = empty (safe to restart/sync). Protocol from `profile.query_protocol`.
+- Query fail-open (A2S / BFBC2 / quake3): unreachable = empty (safe to restart/sync). Protocol from `profile.query_protocol`.
 - Prod only mutates (`Logger.IsMutating`); dry-run/check-only do not.
 - `run` takes flock on `<config>.lock`.
 
@@ -33,6 +33,7 @@ Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
 | `internal/steam` | remote/local buildid; `Less` |
 | `internal/a2s` | UDP A2S_INFO |
 | `internal/bfbc2` | TCP RCON `serverInfo` player counts |
+| `internal/quake3` | UDP Quake3 `getstatus` player counts |
 | `internal/pelican` | Client API power/resources |
 | `internal/state` | YAML phase persistence |
 | `internal/config` | YAML load/validate + sidecars |

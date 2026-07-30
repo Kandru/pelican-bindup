@@ -72,7 +72,75 @@ func TestNames(t *testing.T) {
 	for _, n := range names {
 		found[n] = true
 	}
-	if !found["cs2"] || !found["bfbc2"] {
-		t.Fatalf("Names()=%v, want cs2 and bfbc2", names)
+	if !found["cs2"] || !found["bfbc2"] || !found["warfork"] {
+		t.Fatalf("Names()=%v, want cs2, bfbc2, and warfork", names)
+	}
+}
+
+func TestMountOnly(t *testing.T) {
+	p := &Profile{
+		MountOnly: map[string][]string{
+			"basewf": {"data*.pk3", "modules*.pk3"},
+		},
+		ExcludeDirs: []string{"Steam", "steamcmd"},
+	}
+
+	if p.IsExcluded("basewf") {
+		t.Fatal("basewf dir should not be excluded")
+	}
+	if !p.DirContainsExclusions("basewf") {
+		t.Fatal("basewf should contain exclusions")
+	}
+	if p.IsExcluded("basewf/data0_21.pk3") {
+		t.Fatal("data pk3 should be mounted")
+	}
+	if p.IsExcluded("basewf/modules_21.pk3") {
+		t.Fatal("modules pk3 should be mounted")
+	}
+	if !p.IsExcluded("basewf/dedicated_autoexec.cfg") {
+		t.Fatal("dedicated_autoexec.cfg should be excluded")
+	}
+	if !p.IsExcluded("basewf/configs/server/gametypes/bomb.cfg") {
+		t.Fatal("configs subtree should be excluded")
+	}
+	if !p.IsExcluded("basewf/map_pressure.pk3") {
+		t.Fatal("map pk3 should be excluded")
+	}
+	if !p.IsExcluded("Steam/config/config.vdf") {
+		t.Fatal("Steam should be excluded")
+	}
+	if !p.IsExcluded("steamcmd/steamcmd.sh") {
+		t.Fatal("steamcmd should be excluded")
+	}
+	if p.IsExcluded("wf_server.x86_64") {
+		t.Fatal("game binary should not be excluded")
+	}
+}
+
+func TestLoadWarfork(t *testing.T) {
+	p, err := Load("warfork")
+	if err != nil {
+		t.Fatalf("Load(warfork): %v", err)
+	}
+	if !p.SteamEnabled() {
+		t.Fatal("warfork should have Steam enabled")
+	}
+	if p.SteamAppID != 1136510 {
+		t.Fatalf("SteamAppID=%d, want 1136510", p.SteamAppID)
+	}
+	if p.QueryProtocol != QueryQuake3 {
+		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, QueryQuake3)
+	}
+	if p.ManifestRelative != "steamapps/appmanifest_1136510.acf" {
+		t.Fatalf("ManifestRelative=%q", p.ManifestRelative)
+	}
+	if p.IsExcluded("basewf/data0_21.pk3") {
+		t.Fatal("data pk3 should be mounted")
+	}
+	if !p.IsExcluded("basewf/dedicated_autoexec.cfg") {
+		t.Fatal("dedicated_autoexec.cfg should be excluded")
+	}
+	if p.IsExcluded("wf_server.x86_64") {
+		t.Fatal("game binary should not be excluded")
 	}
 }

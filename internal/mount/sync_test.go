@@ -98,6 +98,79 @@ func TestWipeNonExcluded(t *testing.T) {
 	assertExists("game/csgo/round1.dem")
 }
 
+func TestWipeNonExcludedWarfork(t *testing.T) {
+	child := t.TempDir()
+	profile := &profiles.Profile{
+		MountOnly: map[string][]string{
+			"basewf": {"data*.pk3", "modules*.pk3"},
+		},
+		ExcludeDirs: []string{"Steam", "steamcmd"},
+	}
+
+	mustWrite := func(rel, body string) {
+		t.Helper()
+		path := filepath.Join(child, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mustMkdir := func(rel string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Join(child, filepath.FromSlash(rel)), 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// Shared — must be wiped.
+	mustWrite("wf_server.x86_64", "binary")
+	mustWrite("basewf/data0_21.pk3", "data")
+	mustWrite("basewf/modules_21.pk3", "modules")
+
+	// Per-child — must be kept.
+	mustWrite("basewf/dedicated_autoexec.cfg", "cfg")
+	mustWrite("basewf/configs/server/gametypes/bomb.cfg", "bomb")
+	mustWrite("basewf/map_pressure.pk3", "map")
+	mustMkdir("Steam/config")
+	mustWrite("Steam/config/config.vdf", "vdf")
+	mustMkdir("steamcmd/linux64")
+	mustWrite("steamcmd/linux64/steamclient.so", "sdk")
+
+	s := New("", testLogger())
+	n, err := s.wipeNonExcluded(child, "", profile)
+	if err != nil {
+		t.Fatalf("wipeNonExcluded: %v", err)
+	}
+	if n == 0 {
+		t.Fatal("expected some paths wiped")
+	}
+
+	assertMissing := func(rel string) {
+		t.Helper()
+		if _, err := os.Lstat(filepath.Join(child, filepath.FromSlash(rel))); !os.IsNotExist(err) {
+			t.Fatalf("%s: want missing, got err=%v", rel, err)
+		}
+	}
+	assertExists := func(rel string) {
+		t.Helper()
+		if _, err := os.Lstat(filepath.Join(child, filepath.FromSlash(rel))); err != nil {
+			t.Fatalf("%s: want kept: %v", rel, err)
+		}
+	}
+
+	assertMissing("wf_server.x86_64")
+	assertMissing("basewf/data0_21.pk3")
+	assertMissing("basewf/modules_21.pk3")
+
+	assertExists("basewf/dedicated_autoexec.cfg")
+	assertExists("basewf/configs/server/gametypes/bomb.cfg")
+	assertExists("basewf/map_pressure.pk3")
+	assertExists("Steam/config/config.vdf")
+	assertExists("steamcmd/linux64/steamclient.so")
+}
+
 func TestUnmountAllNoMounts(t *testing.T) {
 	dir := t.TempDir()
 	s := New("", testLogger())
