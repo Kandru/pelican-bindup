@@ -59,10 +59,10 @@ State is persisted in a sidecar file so each cron tick can resume where the last
 - Linux Wings host with bind-mount support
 - Root access (bind mounts and volume paths)
 - Pelican Client API key (`ptlc_…`) with access to all configured servers
-- A2S query host/port per server (must reflect how players reach the game server)
-- Network access to your Pelican panel, `api.steamcmd.net`, and optionally Discord
+- Game query host/port per server (protocol comes from the profile: A2S UDP or BFBC2 TCP RCON)
+- Network access to your Pelican panel, optionally `api.steamcmd.net` (Steam profiles), and Discord
 
-Children must **not** run their own SteamCMD update for the shared game tree.
+For Steam-backed profiles, children must **not** run their own SteamCMD update for the shared game tree.
 
 ## Installation
 
@@ -79,7 +79,7 @@ install -m 755 pelican-steam-updater_linux_amd64 /opt/pelican-steam-updater/peli
 cp config.yaml.example /opt/pelican-steam-updater/config.yaml
 ```
 
-4. Edit `config.yaml` — panel URL, API key, server UUIDs, A2S addresses.
+4. Edit `config.yaml` — panel URL, API key, server UUIDs, query addresses (A2S or RCON depending on profile).
 5. Verify everything:
 
 ```bash
@@ -91,7 +91,7 @@ cp config.yaml.example /opt/pelican-steam-updater/config.yaml
 ## Quick start
 
 ```bash
-# connectivity check (Steam, Pelican, A2S, Discord test message if configured)
+# connectivity check (Steam if configured, Pelican, game query, Discord test message if configured)
 pelican-steam-updater test
 
 # preview what a cron tick would do
@@ -238,11 +238,23 @@ Notifications are only sent in `prod` mode.
 
 Sync profiles define which files are bind-mounted and which are left independent per server (configs, addons, etc.). Profiles are embedded in the binary — currently available:
 
-| Profile | Game | App ID |
-|---------|------|--------|
-| `cs2` | Counter-Strike 2 | 730 |
+| Profile | Game | Steam App ID | Query protocol | Notes |
+|---------|------|--------------|----------------|-------|
+| `cs2` | Counter-Strike 2 | 730 | `a2s` (UDP) | Full Steam update FSM + child sync |
+| `bfbc2` | Battlefield: Bad Company 2 | — | `bfbc2` (TCP RCON) | No Steam poll; maintenance empty-restarts; child sync via `sync` |
 
-To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml) for the format.
+Profile YAML fields:
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| `steam_app_id` | no | When set, enables Steam buildid polling and the update FSM. Omit for non-Steam games. |
+| `manifest_relative` | no | Path under the main volume to `appmanifest_*.acf` (defaults when `steam_app_id` is set). |
+| `query_protocol` | no | `a2s` (default) or `bfbc2`. Selects how emptiness checks query player counts. |
+| `exclude_dirs` / `exclude_files` / `exclude_patterns` | no | Paths left independent per child (not bind-mounted from main). |
+
+For BFBC2, set `query_port` to each server's **RCON port** (TCP). `serverInfo` does not need an RCON password. After updating the main install manually, run `sync --group <name>` to re-apply mounts to children.
+
+To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml) and [`internal/profiles/bfbc2.yaml`](internal/profiles/bfbc2.yaml) for examples.
 
 ## Building from source
 

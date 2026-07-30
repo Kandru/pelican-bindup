@@ -8,7 +8,7 @@ alwaysApply: true
 Read `AGENTS.md` for FSM, packages, invariants.
 
 - Prefer small same-package files in `internal/update` (no god files).
-- Do not change A2S fail-open (unreachable = empty) or state-based per-child sync without explicit ask.
+- Do not change query fail-open (unreachable = empty) or state-based per-child sync without explicit ask.
 - Never decide child sync from child volume LocalBuildID (bind mounts mirror main).
 - Only `prod` mutates; dry-run/check-only must stay non-mutating.
 - Keep modules tiny; Linux-only binary on Wings as root.

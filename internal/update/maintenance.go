@@ -4,12 +4,13 @@ import (
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
 	"github.com/kandru/pelican-docker-mount-updater/internal/state"
 	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
 	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 )
 
-func (o *Orchestrator) maybeMaintenance(group config.GroupConfig, gs *state.GroupState) {
+func (o *Orchestrator) maybeMaintenance(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) {
 	if !group.Maintenance.Enabled {
 		o.log.Detail("maintenance disabled")
 		return
@@ -42,7 +43,7 @@ func (o *Orchestrator) maybeMaintenance(group config.GroupConfig, gs *state.Grou
 			o.log.Detail("skip %s (uptime %s)", short, uptime.Round(time.Minute))
 			continue
 		}
-		if !o.serverEmpty(srv, "maintenance "+short) {
+		if !o.serverEmpty(srv, profile, "maintenance "+short) {
 			continue
 		}
 

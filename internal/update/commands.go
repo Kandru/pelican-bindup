@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/a2s"
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
 	"github.com/kandru/pelican-docker-mount-updater/internal/mount"
 	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
@@ -39,6 +38,9 @@ func (o *Orchestrator) Test(groupName string) error {
 			o.log.Step(ui.StatusError, "profile %s: %v", group.Profile, err)
 			continue
 		}
+		if !profile.SteamEnabled() {
+			continue
+		}
 		if testedApps[profile.SteamAppID] {
 			continue
 		}
@@ -59,7 +61,14 @@ func (o *Orchestrator) Test(groupName string) error {
 		o.log.Section("Group " + group.Name)
 
 		mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
-		if _, err := os.Stat(mainVol); err != nil {
+		if !profile.SteamEnabled() {
+			o.log.Detail("steam checks disabled (profile %s)", group.Profile)
+			if _, err := os.Stat(mainVol); err != nil {
+				o.log.Step(ui.StatusWarn, "main volume %s: %v", util.ShortUUID(group.Main.UUID), err)
+			} else {
+				o.log.Step(ui.StatusOK, "main volume present")
+			}
+		} else if _, err := os.Stat(mainVol); err != nil {
 			o.log.Step(ui.StatusWarn, "main volume %s: %v", util.ShortUUID(group.Main.UUID), err)
 		} else if info, err := o.steam.Check(profile.SteamAppID, mainVol, profile.ManifestRelative); err != nil {
 			o.log.Step(ui.StatusWarn, "main install: %v", err)
@@ -76,9 +85,9 @@ func (o *Orchestrator) Test(groupName string) error {
 			}
 		}
 
-		o.testServer(group.Main, "main")
+		o.testServer(group.Main, profile, "main")
 		for _, child := range group.Children {
-			o.testServer(child, "child")
+			o.testServer(child, profile, "child")
 		}
 	}
 
@@ -98,7 +107,7 @@ func (o *Orchestrator) Test(groupName string) error {
 	return nil
 }
 
-func (o *Orchestrator) testServer(srv config.ServerEndpoint, role string) {
+func (o *Orchestrator) testServer(srv config.ServerEndpoint, profile *profiles.Profile, role string) {
 	short := util.ShortUUID(srv.UUID)
 	addr := fmt.Sprintf("%s:%d", srv.QueryHost, srv.QueryPort)
 
@@ -109,10 +118,10 @@ func (o *Orchestrator) testServer(srv config.ServerEndpoint, role string) {
 	}
 	uptime := time.Duration(res.Uptime) * time.Millisecond
 
-	players, maxPlayers, qerr := a2s.Query(srv.QueryHost, srv.QueryPort)
+	players, maxPlayers, qerr := profile.QueryPlayers(srv.QueryHost, srv.QueryPort)
 	if qerr != nil {
-		o.log.Step(ui.StatusWarn, "%-5s %s  %s  %s uptime %s  a2s: %v",
-			role, short, addr, res.CurrentState, uptime.Round(time.Second), qerr)
+		o.log.Step(ui.StatusWarn, "%-5s %s  %s  %s uptime %s  %s: %v",
+			role, short, addr, res.CurrentState, uptime.Round(time.Second), profile.QueryProtocol, qerr)
 		return
 	}
 
@@ -176,6 +185,10 @@ func (o *Orchestrator) CheckUpdate() error {
 			return err
 		}
 		o.log.Section("Group " + group.Name)
+		if !profile.SteamEnabled() {
+			o.log.Step(ui.StatusOK, "steam checks disabled (profile %s)", group.Profile)
+			continue
+		}
 		mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
 		o.log.Step(ui.StatusStart, "Check Steam buildid (app %d)", profile.SteamAppID)
 		info, err := o.steam.Check(profile.SteamAppID, mainVol, profile.ManifestRelative)

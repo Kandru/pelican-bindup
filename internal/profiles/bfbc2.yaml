@@ -1,0 +1,6 @@
+name: bfbc2
+# No steam_app_id: Steam update checks are skipped; use maintenance restarts + manual sync.
+query_protocol: bfbc2
+exclude_dirs:
+  # Per-server instance data (configs, maps, runtime state)
+  - instance

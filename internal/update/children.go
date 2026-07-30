@@ -15,6 +15,14 @@ import (
 )
 
 func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
+	if !profile.SteamEnabled() {
+		o.log.Step(ui.StatusWarn, "steam disabled for profile %s — resetting phase to idle", group.Profile)
+		gs.Phase = state.PhaseIdle
+		gs.ClearUpdatePending()
+		gs.PendingChildren = nil
+		return o.store.Save(group.Name, gs)
+	}
+
 	o.log.Detail("target_buildid=%s", gs.TargetBuildID)
 
 	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
@@ -39,7 +47,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *pro
 		return o.tickAwaitChildren(group, profile, gs)
 	}
 
-	if !o.serverEmpty(group.Main, "main") {
+	if !o.serverEmpty(group.Main, profile, "main") {
 		o.log.Step(ui.StatusWait, "main not empty — retry next run")
 		return o.store.Save(group.Name, gs)
 	}
@@ -74,6 +82,14 @@ func flagChildren(group config.GroupConfig, gs *state.GroupState) {
 }
 
 func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
+	if !profile.SteamEnabled() {
+		o.log.Step(ui.StatusWarn, "steam disabled for profile %s — resetting phase to idle", group.Profile)
+		gs.Phase = state.PhaseIdle
+		gs.ClearUpdatePending()
+		gs.PendingChildren = nil
+		return o.store.Save(group.Name, gs)
+	}
+
 	if len(gs.PendingChildren) == 0 {
 		if gs.TargetBuildID != "" {
 			o.log.Step(ui.StatusStart, "re-flag children for sync (recovered state)")
@@ -141,7 +157,7 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 		}
 
 		o.log.Step(ui.StatusStart, "child %s needs sync to %s", short, target)
-		if !o.serverEmpty(*child, "child "+short) {
+		if !o.serverEmpty(*child, profile, "child "+short) {
 			remaining = append(remaining, childUUID)
 			continue
 		}

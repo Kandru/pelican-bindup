@@ -13,6 +13,17 @@ import (
 )
 
 func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
+	if !profile.SteamEnabled() {
+		o.log.Detail("steam checks disabled for profile %s", group.Profile)
+		if gs.TargetBuildID != "" {
+			o.log.Detail("clearing stale pending update (steam disabled)")
+			gs.ClearUpdatePending()
+			gs.PendingChildren = nil
+		}
+		o.maybeMaintenance(group, profile, gs)
+		return o.store.Save(group.Name, gs)
+	}
+
 	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
 	if err := o.evaluateUpdateState(group, profile, mainVol, gs); err != nil {
 		return err
@@ -22,7 +33,7 @@ func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Prof
 		return o.proceedPendingUpdate(group, profile, mainVol, gs)
 	}
 
-	o.maybeMaintenance(group, gs)
+	o.maybeMaintenance(group, profile, gs)
 	return o.store.Save(group.Name, gs)
 }
 
