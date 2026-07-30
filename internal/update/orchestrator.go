@@ -61,8 +61,14 @@ func (o *Orchestrator) notifyUpdated(groupName, serverUUID, oldBuild, newBuild s
 	o.notifyDiscord(fmt.Sprintf("%s - %s has been updated from %s to %s", groupName, host, oldBuild, newBuild))
 }
 
-func (o *Orchestrator) Run() error {
-	for _, group := range o.cfg.Groups {
+func (o *Orchestrator) Run(groupName string) error {
+	groups, err := o.resolveGroups(groupName)
+	if err != nil {
+		o.log.Step(ui.StatusError, "%v", err)
+		o.log.Summary()
+		return err
+	}
+	for _, group := range groups {
 		if err := o.runGroup(group); err != nil {
 			o.log.Step(ui.StatusError, "group %s: %v", group.Name, err)
 		}

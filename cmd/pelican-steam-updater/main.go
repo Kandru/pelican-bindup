@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
 	"github.com/kandru/pelican-docker-mount-updater/internal/selfupdate"
@@ -25,7 +26,7 @@ func run() int {
 		usage()
 		return 2
 	}
-	command := os.Args[1]
+	command := strings.ToLower(os.Args[1])
 	if command == "version" {
 		fmt.Println(version)
 		return 0
@@ -40,9 +41,9 @@ func run() int {
 	defaultConfig := config.DefaultConfigPath()
 	configPath := fs.String("config", defaultConfig, "path to config file")
 	modeFlag := fs.String("mode", "", "override mode: prod, dry-run, check-only")
-	groupFlag := fs.String("group", "", "limit to a single group (sync, test)")
+	groupFlag := fs.String("group", "", "limit to a single group (run, sync, test)")
 	noColor := fs.Bool("no-color", false, "disable ANSI colors")
-	if err := fs.Parse(os.Args[2:]); err != nil {
+	if err := fs.Parse(normalizeFlagNames(os.Args[2:])); err != nil {
 		return 2
 	}
 
@@ -52,7 +53,7 @@ func run() int {
 		return 1
 	}
 	if *modeFlag != "" {
-		cfg.Mode = config.Mode(*modeFlag)
+		cfg.Mode = config.Mode(strings.ToLower(*modeFlag))
 	}
 
 	log := ui.New(cfg.Mode, *noColor)
@@ -86,7 +87,7 @@ func run() int {
 			return 1
 		}
 		defer unlock()
-		return exitErr(orch.Run())
+		return exitErr(orch.Run(*groupFlag))
 
 	case "status":
 		return exitErr(orch.Status())
@@ -128,6 +129,23 @@ func exitErr(err error) int {
 	return 0
 }
 
+// normalizeFlagNames lowercases flag names only (-Group → -group), leaving values intact.
+func normalizeFlagNames(args []string) []string {
+	out := make([]string, len(args))
+	for i, a := range args {
+		if !strings.HasPrefix(a, "-") || a == "-" || a == "--" {
+			out[i] = a
+			continue
+		}
+		name, val, hasVal := strings.Cut(a, "=")
+		out[i] = strings.ToLower(name)
+		if hasVal {
+			out[i] += "=" + val
+		}
+	}
+	return out
+}
+
 func usage() {
 	defaultConfig := config.DefaultConfigPath()
 	fmt.Fprintf(os.Stderr, `pelican-steam-updater — Pelican Steam main/child updater
@@ -136,7 +154,7 @@ Usage:
   pelican-steam-updater <command> [flags]
 
 Commands:
-  run            cron tick (update orchestration + maintenance)
+  run            cron tick (update orchestration + maintenance; -group to limit)
   status         show group phases and server states
   check-update   check Steam buildids only
   test           verify Steam API, Pelican panel, and A2S (-group to limit)
@@ -147,7 +165,7 @@ Commands:
 Flags:
   -config string   config file (default: %s, next to the binary)
   -mode string     override mode: prod, dry-run, check-only
-  -group string    limit to one group (sync, test)
+  -group string    limit to one group (run, sync, test)
   -no-color        disable ANSI colors
 `, defaultConfig)
 }

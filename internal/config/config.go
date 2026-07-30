@@ -4,6 +4,7 @@ package config
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
@@ -122,6 +123,7 @@ func Load(path string) (*Config, error) {
 }
 
 func (c *Config) applyDefaults() {
+	c.Mode = Mode(strings.ToLower(string(c.Mode)))
 	if c.Mode == "" {
 		c.Mode = ModeProd
 	}
@@ -176,7 +178,7 @@ func (c *Config) validate() error {
 
 func (c *Config) GroupByName(name string) (*GroupConfig, error) {
 	for i := range c.Groups {
-		if c.Groups[i].Name == name {
+		if strings.EqualFold(c.Groups[i].Name, name) {
 			return &c.Groups[i], nil
 		}
 	}
