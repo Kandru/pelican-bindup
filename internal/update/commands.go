@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
@@ -214,21 +215,33 @@ func (o *Orchestrator) Sync(groupName string) error {
 	}
 
 	syncer := mount.New(o.cfg.Paths.Volumes, o.log)
+	var wg sync.WaitGroup
 	for _, group := range groups {
-		profile, err := profiles.Load(group.Profile)
-		if err != nil {
-			return err
-		}
-		o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
-		for _, child := range group.Children {
-			if err := syncer.Sync(group.Main.UUID, child.UUID, profile, o.log.IsMutating()); err != nil {
-				o.log.Step(ui.StatusError, "sync %s: %v", util.ShortUUID(child.UUID), err)
-			}
-		}
+		wg.Add(1)
+		go func(group config.GroupConfig) {
+			defer wg.Done()
+			o.syncGroup(syncer, group)
+		}(group)
 	}
+	wg.Wait()
+
 	o.log.Summary()
 	if o.log.Errors() > 0 {
 		return fmt.Errorf("sync completed with errors")
 	}
 	return nil
+}
+
+func (o *Orchestrator) syncGroup(syncer *mount.Syncer, group config.GroupConfig) {
+	profile, err := profiles.Load(group.Profile)
+	if err != nil {
+		o.log.Step(ui.StatusError, "group %s profile %s: %v", group.Name, group.Profile, err)
+		return
+	}
+	o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
+	for _, child := range group.Children {
+		if err := syncer.Sync(group.Main.UUID, child.UUID, profile, o.log.IsMutating()); err != nil {
+			o.log.Step(ui.StatusError, "sync %s: %v", util.ShortUUID(child.UUID), err)
+		}
+	}
 }

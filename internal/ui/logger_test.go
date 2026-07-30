@@ -1,11 +1,15 @@
 package ui
 
 import (
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
+
+	"github.com/kandru/pelican-docker-mount-updater/internal/config"
 )
 
 func TestParseLineTime(t *testing.T) {
@@ -63,5 +67,24 @@ func TestRetainRecentLinesDropsOrphans(t *testing.T) {
 		if strings.Contains(line, old.Format(timeLayout)) {
 			t.Fatalf("old line retained: %q", line)
 		}
+	}
+}
+
+func TestLoggerConcurrentStep(t *testing.T) {
+	log := New(config.ModeDryRun, true)
+	log.stdout = io.Discard
+
+	const n = 64
+	var wg sync.WaitGroup
+	wg.Add(n)
+	for i := 0; i < n; i++ {
+		go func(i int) {
+			defer wg.Done()
+			log.Step(StatusOK, "step %d", i)
+		}(i)
+	}
+	wg.Wait()
+	if log.Errors() != 0 {
+		t.Fatalf("errors=%d", log.Errors())
 	}
 }

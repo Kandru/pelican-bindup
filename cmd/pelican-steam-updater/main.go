@@ -139,8 +139,8 @@ Commands:
   run            cron tick (update orchestration + maintenance)
   status         show group phases and server states
   check-update   check Steam buildids only
-  test           verify Steam API, Pelican panel, and A2S for all servers
-  sync           apply bind mounts (all groups or --group)
+  test           verify Steam API, Pelican panel, and A2S (-group to limit)
+  sync           apply bind mounts (all groups in parallel, or -group for one)
   self-update    update binary from latest GitHub release
   version        print version
 

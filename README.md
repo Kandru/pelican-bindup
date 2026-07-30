@@ -100,8 +100,12 @@ pelican-steam-updater run -mode dry-run
 # production cron tick
 pelican-steam-updater run
 
-# re-apply bind mounts manually (e.g. after host reboot)
+# re-apply bind mounts manually (e.g. after host reboot); groups run in parallel
 pelican-steam-updater sync
+
+# limit test or sync to one config group
+pelican-steam-updater test -group cs2-ballerbude
+pelican-steam-updater sync -group cs2-ballerbude
 ```
 
 Config and sidecar files default to the binary's directory. Override with `-config /path/to/config.yaml`.
@@ -183,7 +187,7 @@ pelican-steam-updater <command> [flags]
 | `test` | Verify Steam API, Pelican panel, A2S, and Discord webhook |
 | `status` | Show group phases and server states |
 | `check-update` | Check Steam buildids only |
-| `sync` | Apply bind mounts (`--group` to limit) |
+| `sync` | Apply bind mounts (all groups in parallel; `-group` to limit) |
 | `self-update` | Update binary from latest GitHub release |
 | `version` | Print version |
 

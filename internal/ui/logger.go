@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
@@ -27,6 +28,7 @@ const (
 )
 
 type Logger struct {
+	mu      sync.Mutex
 	stdout  io.Writer
 	file    *os.File
 	mode    config.Mode
@@ -34,7 +36,7 @@ type Logger struct {
 	actions int
 	skipped int
 	errors  int
-	groups int
+	groups  int
 }
 
 func New(mode config.Mode, noColor bool) *Logger {
@@ -69,18 +71,24 @@ func (l *Logger) Close() {
 }
 
 func (l *Logger) Banner(version, command string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	msg := fmt.Sprintf("pelican-steam-updater  v%s  ·  %s  ·  mode=%s", version, command, l.mode)
 	l.line(l.cyan(msg), msg)
 	l.emit("", "")
 }
 
 func (l *Logger) Section(title string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.groups++
 	l.printSection(title)
 }
 
 // Heading prints a section header without incrementing the group counter.
 func (l *Logger) Heading(title string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.printSection(title)
 }
 
@@ -92,6 +100,8 @@ func (l *Logger) printSection(title string) {
 }
 
 func (l *Logger) Step(status Status, format string, args ...any) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	msg := fmt.Sprintf(format, args...)
 	if status == StatusDry {
 		msg = "DRY " + msg
@@ -112,11 +122,15 @@ func (l *Logger) Step(status Status, format string, args ...any) {
 }
 
 func (l *Logger) Detail(format string, args ...any) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	msg := fmt.Sprintf(format, args...)
 	l.line(l.dim("  "+msg), "  "+msg)
 }
 
 func (l *Logger) Summary() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	plain := fmt.Sprintf("groups=%d  actions=%d  skipped=%d  errors=%d", l.groups, l.actions, l.skipped, l.errors)
 	header := "── Summary " + strings.Repeat("─", 52)
 	l.emit("", "")
@@ -125,7 +139,11 @@ func (l *Logger) Summary() {
 	l.flush()
 }
 
-func (l *Logger) Errors() int      { return l.errors }
+func (l *Logger) Errors() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.errors
+}
 func (l *Logger) IsMutating() bool { return l.mode == config.ModeProd }
 
 func (l *Logger) line(colored, plain string) {
