@@ -16,22 +16,24 @@ import (
 
 // Orchestrator runs per-group Steam update + child mount sync ticks.
 type Orchestrator struct {
-	cfg     *config.Config
-	log     *ui.Logger
-	client  *pelican.Client
-	steam   *steam.Checker
-	store   *state.Store
-	discord *discord.Client
+	cfg       *config.Config
+	log       *ui.Logger
+	client    *pelican.Client
+	steam     *steam.Checker
+	store     *state.Store
+	discord   *discord.Client
+	nameCache map[string]string
 }
 
 func New(cfg *config.Config, log *ui.Logger) *Orchestrator {
 	return &Orchestrator{
-		cfg:     cfg,
-		log:     log,
-		client:  pelican.NewClient(cfg.Pelican.PanelURL, cfg.Pelican.APIKey),
-		steam:   steam.NewChecker(cfg.Steam.InfoAPI),
-		store:   state.NewStore(cfg.StateFile()),
-		discord: discord.New(cfg.Discord.WebhookURL),
+		cfg:       cfg,
+		log:       log,
+		client:    pelican.NewClient(cfg.Pelican.PanelURL, cfg.Pelican.APIKey),
+		steam:     steam.NewChecker(cfg.Steam.InfoAPI),
+		store:     state.NewStore(cfg.StateFile()),
+		discord:   discord.New(cfg.Discord.WebhookURL),
+		nameCache: map[string]string{},
 	}
 }
 
@@ -48,10 +50,7 @@ func (o *Orchestrator) notifyDiscord(msg string) {
 
 // notifyUpdated sends: "<group> - <hostname> has been updated from <old> to <new>"
 func (o *Orchestrator) notifyUpdated(groupName, serverUUID, oldBuild, newBuild string) {
-	host, err := o.client.ServerName(serverUUID)
-	if err != nil || host == "" {
-		host = util.ShortUUID(serverUUID)
-	}
+	host := o.serverName(serverUUID)
 	if oldBuild == "" {
 		oldBuild = "unknown"
 	}
@@ -59,6 +58,18 @@ func (o *Orchestrator) notifyUpdated(groupName, serverUUID, oldBuild, newBuild s
 		newBuild = "unknown"
 	}
 	o.notifyDiscord(fmt.Sprintf("%s - %s has been updated from %s to %s", groupName, host, oldBuild, newBuild))
+}
+
+func (o *Orchestrator) serverName(serverUUID string) string {
+	if name, ok := o.nameCache[serverUUID]; ok {
+		return name
+	}
+	host, err := o.client.ServerName(serverUUID)
+	if err != nil || host == "" {
+		host = util.ShortUUID(serverUUID)
+	}
+	o.nameCache[serverUUID] = host
+	return host
 }
 
 func (o *Orchestrator) Run(groupName string) error {

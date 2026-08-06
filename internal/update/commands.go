@@ -176,6 +176,9 @@ func (o *Orchestrator) Status() error {
 		}
 	}
 	o.log.Summary()
+	if o.log.Errors() > 0 {
+		return fmt.Errorf("status completed with %d error(s)", o.log.Errors())
+	}
 	return nil
 }
 
@@ -205,8 +208,13 @@ func (o *Orchestrator) CheckUpdate() error {
 		}
 	}
 	o.log.Summary()
+	if o.log.Errors() > 0 {
+		return fmt.Errorf("check-update completed with %d error(s)", o.log.Errors())
+	}
 	return nil
 }
+
+const syncConcurrency = 4
 
 func (o *Orchestrator) Sync(groupName string) error {
 	groups, err := o.resolveGroups(groupName)
@@ -215,13 +223,28 @@ func (o *Orchestrator) Sync(groupName string) error {
 	}
 
 	syncer := mount.New(o.cfg.Paths.Volumes, o.log)
+	apply := o.log.IsMutating()
+	sem := make(chan struct{}, syncConcurrency)
 	var wg sync.WaitGroup
+
 	for _, group := range groups {
-		wg.Add(1)
-		go func(group config.GroupConfig) {
-			defer wg.Done()
-			o.syncGroup(syncer, group)
-		}(group)
+		profile, err := profiles.Load(group.Profile)
+		if err != nil {
+			o.log.Step(ui.StatusError, "group %s profile %s: %v", group.Name, group.Profile, err)
+			continue
+		}
+		o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
+		for _, child := range group.Children {
+			wg.Add(1)
+			go func(mainUUID, childUUID string, profile *profiles.Profile) {
+				defer wg.Done()
+				sem <- struct{}{}
+				defer func() { <-sem }()
+				if err := syncer.Sync(mainUUID, childUUID, profile, apply); err != nil {
+					o.log.Step(ui.StatusError, "sync %s: %v", util.ShortUUID(childUUID), err)
+				}
+			}(group.Main.UUID, child.UUID, profile)
+		}
 	}
 	wg.Wait()
 
@@ -230,18 +253,4 @@ func (o *Orchestrator) Sync(groupName string) error {
 		return fmt.Errorf("sync completed with errors")
 	}
 	return nil
-}
-
-func (o *Orchestrator) syncGroup(syncer *mount.Syncer, group config.GroupConfig) {
-	profile, err := profiles.Load(group.Profile)
-	if err != nil {
-		o.log.Step(ui.StatusError, "group %s profile %s: %v", group.Name, group.Profile, err)
-		return
-	}
-	o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
-	for _, child := range group.Children {
-		if err := syncer.Sync(group.Main.UUID, child.UUID, profile, o.log.IsMutating()); err != nil {
-			o.log.Step(ui.StatusError, "sync %s: %v", util.ShortUUID(child.UUID), err)
-		}
-	}
 }

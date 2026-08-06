@@ -36,7 +36,10 @@ func (u *Updater) Run(installPath string) error {
 	assetName := fmt.Sprintf("pelican-steam-updater_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
 
 	client := &http.Client{Timeout: 60 * time.Second}
-	req, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+u.repo+"/releases/latest", nil)
+	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+u.repo+"/releases/latest", nil)
+	if err != nil {
+		return fmt.Errorf("github request: %w", err)
+	}
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "pelican-steam-updater")
 

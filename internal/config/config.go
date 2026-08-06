@@ -150,6 +150,11 @@ func (c *Config) applyDefaults() {
 }
 
 func (c *Config) validate() error {
+	switch c.Mode {
+	case ModeProd, ModeDryRun, ModeCheckOnly:
+	default:
+		return fmt.Errorf("mode must be %q, %q, or %q (got %q)", ModeProd, ModeDryRun, ModeCheckOnly, c.Mode)
+	}
 	if c.Pelican.PanelURL == "" {
 		return fmt.Errorf("pelican.panel_url is required")
 	}

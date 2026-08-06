@@ -58,7 +58,7 @@ func parseServerInfo(data []byte) (players, maxPlayers int, err error) {
 	for w := 0; w < numWords && i+4 <= len(data); w++ {
 		ws := int(binary.LittleEndian.Uint32(data[i : i+4]))
 		i += 4
-		if ws < 0 || i+ws+1 > len(data) {
+		if i+ws+1 > len(data) {
 			return 0, 0, fmt.Errorf("word %d truncated", w)
 		}
 		words = append(words, string(data[i:i+ws]))

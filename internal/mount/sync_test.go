@@ -210,8 +210,42 @@ func TestFilterMountsUnder(t *testing.T) {
 	}
 }
 
-func TestUnescapeFindmnt(t *testing.T) {
-	if got := unescapeFindmnt(`/path/with\x20space`); got != "/path/with space" {
+func TestUnescapeMountinfo(t *testing.T) {
+	if got := unescapeMountinfo(`/path/with\040space`); got != "/path/with space" {
 		t.Fatalf("got %q", got)
+	}
+}
+
+func TestParseMountinfoTarget(t *testing.T) {
+	tests := []struct {
+		line string
+		want string
+		ok   bool
+	}{
+		{
+			line: "36 35 98:0 / / rw,relatime - ext4 /dev/root rw",
+			want: "/",
+			ok:   true,
+		},
+		{
+			line: `229 36 0:54 / /var/lib/pelican/volumes/child/game/csgo/pak01_dir.vpk rw,relatime - ext4 /dev/sda1 rw`,
+			want: "/var/lib/pelican/volumes/child/game/csgo/pak01_dir.vpk",
+			ok:   true,
+		},
+		{
+			line: `230 36 0:54 / /var/lib/pelican/volumes/child/path\040with\040space rw,relatime - ext4 /dev/sda1 rw`,
+			want: "/var/lib/pelican/volumes/child/path with space",
+			ok:   true,
+		},
+		{
+			line: "too short",
+			ok:   false,
+		},
+	}
+	for _, tt := range tests {
+		got, ok := parseMountinfoTarget(tt.line)
+		if ok != tt.ok || got != tt.want {
+			t.Fatalf("parseMountinfoTarget(%q) = %q,%v want %q,%v", tt.line, got, ok, tt.want, tt.ok)
+		}
 	}
 }

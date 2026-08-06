@@ -2,12 +2,13 @@
 package mount
 
 import (
+	"bufio"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
+	"syscall"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
 	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
@@ -75,8 +76,8 @@ func (s *Syncer) unmountAll(destPath string) (int, error) {
 	}
 	var count int
 	for _, target := range targets {
-		if err := exec.Command("umount", target).Run(); err != nil {
-			return count, fmt.Errorf("could not unmount %s (is the server still running?)", target)
+		if err := syscall.Unmount(target, 0); err != nil {
+			return count, fmt.Errorf("could not unmount %s (is the server still running?): %w", target, err)
 		}
 		count++
 	}
@@ -84,22 +85,39 @@ func (s *Syncer) unmountAll(destPath string) (int, error) {
 }
 
 // listMountsUnder returns mount targets strictly under destPath (not destPath itself),
-// deepest-first. Uses a full findmnt listing because findmnt -R <path> returns nothing
-// when <path> itself is not a mount point (typical Pelican volume dirs).
+// deepest-first. Reads /proc/self/mountinfo so nested binds are found even when
+// destPath itself is not a mount point (typical Pelican volume dirs).
 func listMountsUnder(destPath string) ([]string, error) {
-	out, err := exec.Command("findmnt", "--raw", "--noheadings", "--output", "TARGET").Output()
+	f, err := os.Open("/proc/self/mountinfo")
 	if err != nil {
-		return nil, fmt.Errorf("findmnt: %w", err)
+		return nil, fmt.Errorf("open mountinfo: %w", err)
 	}
+	defer f.Close()
+
 	var all []string
-	for _, line := range strings.Split(string(out), "\n") {
-		line = strings.TrimSpace(line)
-		if line == "" {
+	sc := bufio.NewScanner(f)
+	for sc.Scan() {
+		target, ok := parseMountinfoTarget(sc.Text())
+		if !ok {
 			continue
 		}
-		all = append(all, unescapeFindmnt(line))
+		all = append(all, target)
+	}
+	if err := sc.Err(); err != nil {
+		return nil, fmt.Errorf("read mountinfo: %w", err)
 	}
 	return filterMountsUnder(destPath, all), nil
+}
+
+// parseMountinfoTarget extracts the mount point (field 5) from a /proc/self/mountinfo line.
+// Format: ID parent major:minor root mountpoint options [optional...] - fstype source superopts
+// Spaces in mountpoints are octal-escaped (\040), so Fields is safe.
+func parseMountinfoTarget(line string) (string, bool) {
+	tokens := strings.Fields(line)
+	if len(tokens) < 5 {
+		return "", false
+	}
+	return unescapeMountinfo(tokens[4]), true
 }
 
 func filterMountsUnder(destPath string, targets []string) []string {
@@ -121,16 +139,17 @@ func filterMountsUnder(destPath string, targets []string) []string {
 	return under
 }
 
-// unescapeFindmnt decodes findmnt --raw hex escapes (e.g. \x20).
-func unescapeFindmnt(s string) string {
+// unescapeMountinfo decodes octal escapes used in /proc/self/mountinfo (e.g. \040 for space).
+func unescapeMountinfo(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
 	for i := 0; i < len(s); i++ {
-		if s[i] == '\\' && i+3 < len(s) && s[i+1] == 'x' {
-			hi, ok1 := fromHex(s[i+2])
-			lo, ok2 := fromHex(s[i+3])
-			if ok1 && ok2 {
-				b.WriteByte(hi<<4 | lo)
+		if s[i] == '\\' && i+3 < len(s) {
+			o1, ok1 := fromOctal(s[i+1])
+			o2, ok2 := fromOctal(s[i+2])
+			o3, ok3 := fromOctal(s[i+3])
+			if ok1 && ok2 && ok3 {
+				b.WriteByte(o1<<6 | o2<<3 | o3)
 				i += 3
 				continue
 			}
@@ -140,17 +159,11 @@ func unescapeFindmnt(s string) string {
 	return b.String()
 }
 
-func fromHex(c byte) (byte, bool) {
-	switch {
-	case c >= '0' && c <= '9':
+func fromOctal(c byte) (byte, bool) {
+	if c >= '0' && c <= '7' {
 		return c - '0', true
-	case c >= 'a' && c <= 'f':
-		return c - 'a' + 10, true
-	case c >= 'A' && c <= 'F':
-		return c - 'A' + 10, true
-	default:
-		return 0, false
 	}
+	return 0, false
 }
 
 // wipeNonExcluded deletes all non-excluded child paths so processDir can recreate
@@ -223,23 +236,19 @@ func (s *Syncer) processDir(srcBase, dstBase, rel string, profile *profiles.Prof
 			continue
 		}
 
-		info, err := entry.Info()
-		if err != nil {
-			return mounted, skipped, err
-		}
-
 		switch {
-		case info.Mode()&os.ModeSymlink != 0:
+		case entry.Type()&os.ModeSymlink != 0:
 			target, err := os.Readlink(absSrc)
 			if err != nil {
 				return mounted, skipped, err
 			}
 			dstLink := filepath.Join(dstBase, itemRel)
 			_ = os.MkdirAll(filepath.Dir(dstLink), 0o755)
-			if _, err := os.Lstat(dstLink); os.IsNotExist(err) {
-				if err := os.Symlink(target, dstLink); err != nil {
-					return mounted, skipped, err
-				}
+			if err := os.Remove(dstLink); err != nil && !os.IsNotExist(err) {
+				return mounted, skipped, err
+			}
+			if err := os.Symlink(target, dstLink); err != nil {
+				return mounted, skipped, err
 			}
 
 		case entry.IsDir():
@@ -277,8 +286,8 @@ func (s *Syncer) processDir(srcBase, dstBase, rel string, profile *profiles.Prof
 }
 
 func bindMount(src, dst string) error {
-	if exec.Command("mountpoint", "-q", dst).Run() == nil {
-		return nil
+	if err := syscall.Mount(src, dst, "", syscall.MS_BIND, ""); err != nil {
+		return fmt.Errorf("bind mount %s → %s: %w", src, dst, err)
 	}
-	return exec.Command("mount", "--bind", src, dst).Run()
+	return nil
 }

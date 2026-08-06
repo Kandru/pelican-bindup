@@ -16,11 +16,7 @@ import (
 
 func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
 	if !profile.SteamEnabled() {
-		o.log.Step(ui.StatusWarn, "steam disabled for profile %s — resetting phase to idle", group.Profile)
-		gs.Phase = state.PhaseIdle
-		gs.ClearUpdatePending()
-		gs.PendingChildren = nil
-		return o.store.Save(group.Name, gs)
+		return o.resetSteamDisabled(group, gs)
 	}
 
 	o.log.Detail("target_buildid=%s", gs.TargetBuildID)
@@ -34,17 +30,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *pro
 
 	// Main already updated (e.g. maintenance) while we waited for empty — skip redundant restart.
 	if gs.TargetBuildID != "" && local != "" && !steam.Less(local, gs.TargetBuildID) {
-		o.log.Step(ui.StatusOK, "main already on target %s — skipping restart, syncing children", gs.TargetBuildID)
-		if !o.log.IsMutating() {
-			o.log.Step(ui.StatusDry, "would sync children")
-			return o.store.Save(group.Name, gs)
-		}
-		o.notifyUpdated(group.Name, group.Main.UUID, gs.SyncedBuildID, gs.TargetBuildID)
-		flagChildren(group, gs)
-		if err := o.store.Save(group.Name, gs); err != nil {
-			return err
-		}
-		return o.tickAwaitChildren(group, profile, gs)
+		return o.advanceToChildren(group, profile, gs, gs.SyncedBuildID, "skipping restart, syncing children")
 	}
 
 	if !o.serverEmpty(group.Main, profile, "main") {
@@ -81,13 +67,33 @@ func flagChildren(group config.GroupConfig, gs *state.GroupState) {
 	}
 }
 
+// advanceToChildren notifies that main is on target, flags children, and enters await_children.
+// oldBuild is used for the Discord update notice (caller chooses SyncedBuildID vs local).
+func (o *Orchestrator) advanceToChildren(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState, oldBuild, reason string) error {
+	o.log.Step(ui.StatusOK, "main already on target %s — %s", gs.TargetBuildID, reason)
+	if !o.log.IsMutating() {
+		o.log.Step(ui.StatusDry, "would sync children")
+		return o.store.Save(group.Name, gs)
+	}
+	o.notifyUpdated(group.Name, group.Main.UUID, oldBuild, gs.TargetBuildID)
+	flagChildren(group, gs)
+	if err := o.store.Save(group.Name, gs); err != nil {
+		return err
+	}
+	return o.tickAwaitChildren(group, profile, gs)
+}
+
+func (o *Orchestrator) resetSteamDisabled(group config.GroupConfig, gs *state.GroupState) error {
+	o.log.Step(ui.StatusWarn, "steam disabled for profile %s — resetting phase to idle", group.Profile)
+	gs.Phase = state.PhaseIdle
+	gs.ClearUpdatePending()
+	gs.PendingChildren = nil
+	return o.store.Save(group.Name, gs)
+}
+
 func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
 	if !profile.SteamEnabled() {
-		o.log.Step(ui.StatusWarn, "steam disabled for profile %s — resetting phase to idle", group.Profile)
-		gs.Phase = state.PhaseIdle
-		gs.ClearUpdatePending()
-		gs.PendingChildren = nil
-		return o.store.Save(group.Name, gs)
+		return o.resetSteamDisabled(group, gs)
 	}
 
 	if len(gs.PendingChildren) == 0 {

@@ -165,25 +165,18 @@ func (l *Logger) flush() {
 }
 
 func (l *Logger) marker(s Status) string {
-	switch s {
-	case StatusStart:
-		return l.colored("→", "\x1b[36m")
-	case StatusOK:
-		return l.colored("✓", "\x1b[32m")
-	case StatusWait:
-		return l.colored("…", "\x1b[33m")
-	case StatusWarn:
-		return l.colored("!", "\x1b[33m")
-	case StatusError:
-		return l.colored("✗", "\x1b[31m")
-	case StatusDry:
-		return l.colored("○", "\x1b[35m")
-	default:
-		return "·"
+	glyph := markerGlyph(s)
+	if code := markerColor(s); code != "" {
+		return l.colored(glyph, code)
 	}
+	return glyph
 }
 
 func (l *Logger) markerPlain(s Status) string {
+	return markerGlyph(s)
+}
+
+func markerGlyph(s Status) string {
 	switch s {
 	case StatusStart:
 		return "→"
@@ -199,6 +192,23 @@ func (l *Logger) markerPlain(s Status) string {
 		return "○"
 	default:
 		return "·"
+	}
+}
+
+func markerColor(s Status) string {
+	switch s {
+	case StatusStart:
+		return "\x1b[36m"
+	case StatusOK:
+		return "\x1b[32m"
+	case StatusWait, StatusWarn:
+		return "\x1b[33m"
+	case StatusError:
+		return "\x1b[31m"
+	case StatusDry:
+		return "\x1b[35m"
+	default:
+		return ""
 	}
 }
 

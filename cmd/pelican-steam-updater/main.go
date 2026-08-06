@@ -54,6 +54,13 @@ func run() int {
 	}
 	if *modeFlag != "" {
 		cfg.Mode = config.Mode(strings.ToLower(*modeFlag))
+		switch cfg.Mode {
+		case config.ModeProd, config.ModeDryRun, config.ModeCheckOnly:
+		default:
+			fmt.Fprintf(os.Stderr, "config error: mode must be %q, %q, or %q (got %q)\n",
+				config.ModeProd, config.ModeDryRun, config.ModeCheckOnly, cfg.Mode)
+			return 1
+		}
 	}
 
 	log := ui.New(cfg.Mode, *noColor)

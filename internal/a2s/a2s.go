@@ -14,10 +14,6 @@ var infoRequest = []byte{
 
 // Query returns current and max player counts from an A2S_INFO response.
 func Query(host string, port int) (players, maxPlayers int, err error) {
-	return queryInfo(host, port)
-}
-
-func queryInfo(host string, port int) (players, maxPlayers int, err error) {
 	conn, err := net.DialTimeout("udp", fmt.Sprintf("%s:%d", host, port), 3*time.Second)
 	if err != nil {
 		return 0, 0, err

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/a2s"
 	"github.com/kandru/pelican-docker-mount-updater/internal/bfbc2"
@@ -32,12 +33,27 @@ type Profile struct {
 	MountOnly        map[string][]string `yaml:"mount_only"`
 }
 
+var (
+	loadMu sync.Mutex
+	loaded = map[string]*Profile{}
+)
+
 func Load(name string) (*Profile, error) {
+	loadMu.Lock()
+	defer loadMu.Unlock()
+	if p, ok := loaded[name]; ok {
+		return p, nil
+	}
 	data, err := fs.ReadFile(name + ".yaml")
 	if err != nil {
 		return nil, fmt.Errorf("profile %q not found (available: %s)", name, strings.Join(Names(), ", "))
 	}
-	return parseProfile(name, data)
+	p, err := parseProfile(name, data)
+	if err != nil {
+		return nil, err
+	}
+	loaded[name] = p
+	return p, nil
 }
 
 func parseProfile(name string, data []byte) (*Profile, error) {
@@ -126,8 +142,14 @@ func (p *Profile) IsExcluded(rel string) bool {
 
 func (p *Profile) DirContainsExclusions(rel string) bool {
 	rel = filepath.ToSlash(rel)
-	for _, excl := range append(p.ExcludeDirs, p.ExcludeFiles...) {
-		if strings.HasPrefix(excl, rel+"/") {
+	prefix := rel + "/"
+	for _, excl := range p.ExcludeDirs {
+		if strings.HasPrefix(excl, prefix) {
+			return true
+		}
+	}
+	for _, excl := range p.ExcludeFiles {
+		if strings.HasPrefix(excl, prefix) {
 			return true
 		}
 	}
@@ -135,7 +157,7 @@ func (p *Profile) DirContainsExclusions(rel string) bool {
 		return true
 	}
 	for mountDir := range p.MountOnly {
-		if strings.HasPrefix(mountDir, rel+"/") {
+		if strings.HasPrefix(mountDir, prefix) {
 			return true
 		}
 	}

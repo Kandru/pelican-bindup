@@ -35,11 +35,23 @@ func NewChecker(infoAPI string) *Checker {
 }
 
 func (c *Checker) Ping(appID int) (buildID string, err error) {
-	return c.remoteBuildID(appID)
+	resp, err := c.client.Get(fmt.Sprintf("%s/%d", c.infoAPI, appID))
+	if err != nil {
+		return "", fmt.Errorf("steam info api: %w", err)
+	}
+	defer resp.Body.Close()
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("steam info api %s", resp.Status)
+	}
+	return parseRemoteBuildID(body, appID)
 }
 
 func (c *Checker) Check(appID int, mainVolume, manifestRelative string) (*BuildInfo, error) {
-	remote, err := c.remoteBuildID(appID)
+	remote, err := c.Ping(appID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,22 +75,6 @@ func Less(a, b string) bool {
 		return a < b
 	}
 	return ai < bi
-}
-
-func (c *Checker) remoteBuildID(appID int) (string, error) {
-	resp, err := c.client.Get(fmt.Sprintf("%s/%d", c.infoAPI, appID))
-	if err != nil {
-		return "", fmt.Errorf("steam info api: %w", err)
-	}
-	defer resp.Body.Close()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("steam info api %s", resp.Status)
-	}
-	return parseRemoteBuildID(body, appID)
 }
 
 func parseRemoteBuildID(body []byte, appID int) (string, error) {

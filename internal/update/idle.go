@@ -43,11 +43,11 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 	if o.shouldCheckUpdate(group, gs) {
 		o.log.Step(ui.StatusStart, "Check Steam buildid on main (app %d)", profile.SteamAppID)
 		info, err := o.steam.Check(profile.SteamAppID, mainVol, profile.ManifestRelative)
-		gs.LastUpdateCheck = time.Now().UTC()
 		if err != nil {
 			o.log.Step(ui.StatusError, "steam check failed: %v", err)
 			return err
 		}
+		gs.LastUpdateCheck = time.Now().UTC()
 		remote, local = info.Remote, info.Local
 		if remote != "" {
 			gs.CachedRemoteBuildID = remote
@@ -171,17 +171,7 @@ func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *p
 
 	// Main already on target → only children remain (e.g. maintenance restarted main).
 	if local != "" && !steam.Less(local, gs.TargetBuildID) {
-		o.log.Step(ui.StatusOK, "main already on target %s — syncing children next", gs.TargetBuildID)
-		if !o.log.IsMutating() {
-			o.log.Step(ui.StatusDry, "would sync children")
-			return o.store.Save(group.Name, gs)
-		}
-		o.notifyUpdated(group.Name, group.Main.UUID, gs.SyncedBuildID, gs.TargetBuildID)
-		flagChildren(group, gs)
-		if err := o.store.Save(group.Name, gs); err != nil {
-			return err
-		}
-		return o.tickAwaitChildren(group, profile, gs)
+		return o.advanceToChildren(group, profile, gs, gs.SyncedBuildID, "syncing children next")
 	}
 
 	o.log.Step(ui.StatusOK, "defer elapsed — waiting for empty main to restart")
