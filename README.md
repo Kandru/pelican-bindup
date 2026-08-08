@@ -260,7 +260,7 @@ Profile YAML fields:
 
 For BFBC2, set `query_port` to each server's **RCON port** (TCP). `serverInfo` does not need an RCON password. For Warfork, set `query_port` to each server's **game UDP port** (default `44400`). After updating the main install manually, run `sync --group <name>` to re-apply mounts to children.
 
-To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml), [`internal/profiles/bfbc2.yaml`](internal/profiles/bfbc2.yaml), and [`internal/profiles/warfork.yaml`](internal/profiles/warfork.yaml) for examples.
+To add a profile, create `internal/profiles/<name>.yaml` and rebuild. See [`internal/profiles/cs2.yaml`](internal/profiles/cs2.yaml), [`internal/profiles/bfbc2.yaml`](internal/profiles/bfbc2.yaml), and [`internal/profiles/warfork.yaml`](internal/profiles/warfork.yaml) for examples. To add a new query protocol, implement `Query(host, port)` in a new package under `internal/` and register it in [`internal/query/query.go`](internal/query/query.go).
 
 ## Building from source
 

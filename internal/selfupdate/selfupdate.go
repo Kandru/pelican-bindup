@@ -27,7 +27,7 @@ func New(repo, version string, log *ui.Logger) *Updater {
 	return &Updater{repo: repo, version: version, log: log}
 }
 
-func (u *Updater) Run(installPath string) error {
+func (u *Updater) Run() error {
 	if u.repo == "" || strings.HasPrefix(u.repo, "OWNER/") {
 		return fmt.Errorf("self_update.github_repo is not configured")
 	}
@@ -96,11 +96,9 @@ func (u *Updater) Run(installPath string) error {
 		return err
 	}
 
-	if installPath == "" {
-		installPath, err = os.Executable()
-		if err != nil {
-			return err
-		}
+	installPath, err := os.Executable()
+	if err != nil {
+		return err
 	}
 
 	u.log.Step(ui.StatusStart, "install to %s", installPath)

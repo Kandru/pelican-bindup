@@ -58,11 +58,15 @@ func (l *Logger) OpenFile(path string, retainHours int) error {
 	if err != nil {
 		return err
 	}
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	l.file = f
 	return nil
 }
 
 func (l *Logger) Close() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.file != nil {
 		_ = l.file.Sync()
 		_ = l.file.Close()
@@ -106,7 +110,7 @@ func (l *Logger) Step(status Status, format string, args ...any) {
 	if status == StatusDry {
 		msg = "DRY " + msg
 	}
-	marker := l.markerPlain(status)
+	marker := markerGlyph(status)
 	colored := l.marker(status) + " " + msg
 	plain := marker + " " + msg
 	l.line(colored, plain)
@@ -170,10 +174,6 @@ func (l *Logger) marker(s Status) string {
 		return l.colored(glyph, code)
 	}
 	return glyph
-}
-
-func (l *Logger) markerPlain(s Status) string {
-	return markerGlyph(s)
 }
 
 func markerGlyph(s Status) string {
@@ -274,12 +274,6 @@ func parseLineTime(line string) (time.Time, bool) {
 	}
 	if t, err := time.ParseInLocation(timeLayout, line[:len(timeLayout)], time.Local); err == nil {
 		return t, true
-	}
-	// Legacy banners put the time at the end: "... ·  2006-01-02 15:04:05"
-	if strings.HasPrefix(line, "pelican-steam-updater") {
-		if t, err := time.ParseInLocation(timeLayout, line[len(line)-len(timeLayout):], time.Local); err == nil {
-			return t, true
-		}
 	}
 	return time.Time{}, false
 }

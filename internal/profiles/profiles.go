@@ -8,20 +8,12 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/a2s"
-	"github.com/kandru/pelican-docker-mount-updater/internal/bfbc2"
-	"github.com/kandru/pelican-docker-mount-updater/internal/quake3"
+	"github.com/kandru/pelican-docker-mount-updater/internal/query"
 	"gopkg.in/yaml.v3"
 )
 
 //go:embed *.yaml
 var fs embed.FS
-
-const (
-	QueryA2S    = "a2s"
-	QueryBFBC2  = "bfbc2"
-	QueryQuake3 = "quake3"
-)
 
 type Profile struct {
 	SteamAppID       int                 `yaml:"steam_app_id"`
@@ -62,13 +54,11 @@ func parseProfile(name string, data []byte) (*Profile, error) {
 		return nil, fmt.Errorf("parse profile %q: %w", name, err)
 	}
 	if p.QueryProtocol == "" {
-		p.QueryProtocol = QueryA2S
+		p.QueryProtocol = query.Default
 	}
-	switch p.QueryProtocol {
-	case QueryA2S, QueryBFBC2, QueryQuake3:
-	default:
-		return nil, fmt.Errorf("profile %q: unknown query_protocol %q (want %s, %s, or %s)",
-			name, p.QueryProtocol, QueryA2S, QueryBFBC2, QueryQuake3)
+	if !query.Known(p.QueryProtocol) {
+		return nil, fmt.Errorf("profile %q: unknown query_protocol %q (want %s)",
+			name, p.QueryProtocol, strings.Join(query.Names(), ", "))
 	}
 	if p.SteamAppID != 0 && p.ManifestRelative == "" {
 		p.ManifestRelative = fmt.Sprintf("steamapps/appmanifest_%d.acf", p.SteamAppID)
@@ -83,14 +73,7 @@ func (p *Profile) SteamEnabled() bool {
 
 // QueryPlayers returns current/max players using the profile's query protocol.
 func (p *Profile) QueryPlayers(host string, port int) (players, maxPlayers int, err error) {
-	switch p.QueryProtocol {
-	case QueryBFBC2:
-		return bfbc2.Query(host, port)
-	case QueryQuake3:
-		return quake3.Query(host, port)
-	default:
-		return a2s.Query(host, port)
-	}
+	return query.Players(p.QueryProtocol, host, port)
 }
 
 func Names() []string {
@@ -167,8 +150,7 @@ func (p *Profile) DirContainsExclusions(rel string) bool {
 // mountOnlyChild reports the mount_only directory and its immediate child name
 // when rel is that directory or a path beneath it.
 func (p *Profile) mountOnlyChild(rel string) (mountDir, child string, ok bool) {
-	for mountDir, patterns := range p.MountOnly {
-		_ = patterns
+	for mountDir := range p.MountOnly {
 		if rel == mountDir {
 			return mountDir, "", true
 		}

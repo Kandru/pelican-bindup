@@ -3,7 +3,6 @@ package update
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
@@ -39,10 +38,7 @@ func (o *Orchestrator) Test(groupName string) error {
 			o.log.Step(ui.StatusError, "profile %s: %v", group.Profile, err)
 			continue
 		}
-		if !profile.SteamEnabled() {
-			continue
-		}
-		if testedApps[profile.SteamAppID] {
+		if !profile.SteamEnabled() || testedApps[profile.SteamAppID] {
 			continue
 		}
 		testedApps[profile.SteamAppID] = true
@@ -54,14 +50,10 @@ func (o *Orchestrator) Test(groupName string) error {
 		o.log.Step(ui.StatusOK, "steam app %d  buildid %s", profile.SteamAppID, buildID)
 	}
 
-	for _, group := range groups {
-		profile, err := profiles.Load(group.Profile)
-		if err != nil {
-			return err
-		}
+	o.eachGroup(groups, func(group config.GroupConfig, profile *profiles.Profile) error {
 		o.log.Section("Group " + group.Name)
 
-		mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+		mainVol := o.mainVolume(group)
 		if !profile.SteamEnabled() {
 			o.log.Detail("steam checks disabled (profile %s)", group.Profile)
 			if _, err := os.Stat(mainVol); err != nil {
@@ -90,7 +82,8 @@ func (o *Orchestrator) Test(groupName string) error {
 		for _, child := range group.Children {
 			o.testServer(child, profile, "child")
 		}
-	}
+		return nil
+	})
 
 	if o.discord.Enabled() {
 		o.log.Step(ui.StatusStart, "Discord webhook test")
@@ -101,11 +94,7 @@ func (o *Orchestrator) Test(groupName string) error {
 		}
 	}
 
-	o.log.Summary()
-	if o.log.Errors() > 0 {
-		return fmt.Errorf("test failed with %d error(s)", o.log.Errors())
-	}
-	return nil
+	return o.finish("test")
 }
 
 func (o *Orchestrator) testServer(srv config.ServerEndpoint, profile *profiles.Profile, role string) {
@@ -160,11 +149,7 @@ func (o *Orchestrator) Status() error {
 			o.log.Detail("update_detected_at=%s", gs.UpdateDetectedAt.Local().Format("2006-01-02 15:04:05"))
 		}
 		for _, child := range group.Children {
-			synced := gs.ChildSynced[child.UUID]
-			if synced == "" {
-				synced = "(none)"
-			}
-			o.log.Detail("child %s synced=%s", util.ShortUUID(child.UUID), synced)
+			o.log.Detail("child %s synced=%s", util.ShortUUID(child.UUID), syncedLabel(gs.ChildSynced[child.UUID]))
 		}
 		if len(gs.PendingChildren) > 0 {
 			o.log.Detail("pending_children=%d", len(gs.PendingChildren))
@@ -175,30 +160,22 @@ func (o *Orchestrator) Status() error {
 			o.log.Detail("main state=%s uptime=%s", res.CurrentState, time.Duration(res.Uptime)*time.Millisecond)
 		}
 	}
-	o.log.Summary()
-	if o.log.Errors() > 0 {
-		return fmt.Errorf("status completed with %d error(s)", o.log.Errors())
-	}
-	return nil
+	return o.finish("status")
 }
 
 func (o *Orchestrator) CheckUpdate() error {
-	for _, group := range o.cfg.Groups {
-		profile, err := profiles.Load(group.Profile)
-		if err != nil {
-			return err
-		}
+	o.eachGroup(o.cfg.Groups, func(group config.GroupConfig, profile *profiles.Profile) error {
 		o.log.Section("Group " + group.Name)
 		if !profile.SteamEnabled() {
 			o.log.Step(ui.StatusOK, "steam checks disabled (profile %s)", group.Profile)
-			continue
+			return nil
 		}
-		mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+		mainVol := o.mainVolume(group)
 		o.log.Step(ui.StatusStart, "Check Steam buildid (app %d)", profile.SteamAppID)
 		info, err := o.steam.Check(profile.SteamAppID, mainVol, profile.ManifestRelative)
 		if err != nil {
 			o.log.Step(ui.StatusError, "steam check failed: %v", err)
-			continue
+			return nil
 		}
 		o.log.Detail("remote=%s  local=%s", info.Remote, info.Local)
 		if info.Update {
@@ -206,12 +183,9 @@ func (o *Orchestrator) CheckUpdate() error {
 		} else {
 			o.log.Step(ui.StatusOK, "up to date")
 		}
-	}
-	o.log.Summary()
-	if o.log.Errors() > 0 {
-		return fmt.Errorf("check-update completed with %d error(s)", o.log.Errors())
-	}
-	return nil
+		return nil
+	})
+	return o.finish("check-update")
 }
 
 const syncConcurrency = 4
@@ -227,12 +201,7 @@ func (o *Orchestrator) Sync(groupName string) error {
 	sem := make(chan struct{}, syncConcurrency)
 	var wg sync.WaitGroup
 
-	for _, group := range groups {
-		profile, err := profiles.Load(group.Profile)
-		if err != nil {
-			o.log.Step(ui.StatusError, "group %s profile %s: %v", group.Name, group.Profile, err)
-			continue
-		}
+	o.eachGroup(groups, func(group config.GroupConfig, profile *profiles.Profile) error {
 		o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
 		for _, child := range group.Children {
 			wg.Add(1)
@@ -245,12 +214,9 @@ func (o *Orchestrator) Sync(groupName string) error {
 				}
 			}(group.Main.UUID, child.UUID, profile)
 		}
-	}
+		return nil
+	})
 	wg.Wait()
 
-	o.log.Summary()
-	if o.log.Errors() > 0 {
-		return fmt.Errorf("sync completed with errors")
-	}
-	return nil
+	return o.finish("sync")
 }

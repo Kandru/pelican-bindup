@@ -1,7 +1,6 @@
 package update
 
 import (
-	"path/filepath"
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
@@ -24,13 +23,13 @@ func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Prof
 		return o.store.Save(group.Name, gs)
 	}
 
-	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
+	mainVol := o.mainVolume(group)
 	if err := o.evaluateUpdateState(group, profile, mainVol, gs); err != nil {
 		return err
 	}
 
 	if gs.TargetBuildID != "" {
-		return o.proceedPendingUpdate(group, profile, mainVol, gs)
+		return o.proceedPendingUpdate(group, profile, gs)
 	}
 
 	o.maybeMaintenance(group, profile, gs)
@@ -59,9 +58,8 @@ func (o *Orchestrator) evaluateUpdateState(group config.GroupConfig, profile *pr
 		}
 		o.log.Step(ui.StatusWait, "Steam check skipped (next in %s)", remaining.Round(time.Minute))
 		var err error
-		local, err = o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+		local, err = o.mainLocalBuildID(group, profile)
 		if err != nil {
-			o.log.Step(ui.StatusError, "read main buildid: %v", err)
 			return err
 		}
 		remote = gs.CachedRemoteBuildID
@@ -102,14 +100,15 @@ func (o *Orchestrator) bootstrapSynced(group config.GroupConfig, gs *state.Group
 		gs.SyncedBuildID = mainLocal
 		o.log.Detail("bootstrapped group synced_buildid=%s", mainLocal)
 	}
+	if !wasUninitialized || gs.Phase != state.PhaseIdle || gs.TargetBuildID != "" {
+		return
+	}
 	for _, child := range group.Children {
 		if _, ok := gs.ChildSynced[child.UUID]; ok {
 			continue
 		}
-		if wasUninitialized && gs.Phase == state.PhaseIdle && gs.TargetBuildID == "" {
-			gs.MarkChildSynced(child.UUID, mainLocal)
-			o.log.Detail("bootstrapped child %s synced=%s", util.ShortUUID(child.UUID), mainLocal)
-		}
+		gs.MarkChildSynced(child.UUID, mainLocal)
+		o.log.Detail("bootstrapped child %s synced=%s", util.ShortUUID(child.UUID), mainLocal)
 	}
 }
 
@@ -120,10 +119,7 @@ func (o *Orchestrator) logChildSyncStatus(group config.GroupConfig, gs *state.Gr
 	o.log.Step(ui.StatusStart, "Check children vs main buildid %s", target)
 	for _, child := range group.Children {
 		short := util.ShortUUID(child.UUID)
-		synced := gs.ChildSynced[child.UUID]
-		if synced == "" {
-			synced = "(none)"
-		}
+		synced := syncedLabel(gs.ChildSynced[child.UUID])
 		if gs.ChildNeedsSync(child.UUID, target) {
 			o.log.Detail("child %s  synced=%s  needs sync", short, synced)
 		} else {
@@ -156,16 +152,15 @@ func (o *Orchestrator) recordPending(group config.GroupConfig, gs *state.GroupSt
 	o.log.Detail("defer in progress since %s", gs.UpdateDetectedAt.Local().Format("2006-01-02 15:04:05"))
 }
 
-func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *profiles.Profile, mainVol string, gs *state.GroupState) error {
+func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {
 	remaining := group.DeferUpdateInterval() - time.Since(gs.UpdateDetectedAt)
 	if remaining > 0 {
 		o.log.Step(ui.StatusWait, "update defer (%s remaining, target=%s)", remaining.Round(time.Minute), gs.TargetBuildID)
 		return o.store.Save(group.Name, gs)
 	}
 
-	local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+	local, err := o.mainLocalBuildID(group, profile)
 	if err != nil {
-		o.log.Step(ui.StatusError, "read main buildid: %v", err)
 		return err
 	}
 

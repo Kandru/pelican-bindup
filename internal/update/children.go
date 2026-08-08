@@ -2,7 +2,6 @@ package update
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/config"
@@ -21,10 +20,8 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *pro
 
 	o.log.Detail("target_buildid=%s", gs.TargetBuildID)
 
-	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
-	local, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+	local, err := o.mainLocalBuildID(group, profile)
 	if err != nil {
-		o.log.Step(ui.StatusError, "read main buildid: %v", err)
 		return err
 	}
 
@@ -106,10 +103,8 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 	}
 
 	target := gs.TargetBuildID
-	mainVol := filepath.Join(o.cfg.Paths.Volumes, group.Main.UUID)
-	mainLocal, err := o.steam.LocalBuildID(mainVol, profile.ManifestRelative)
+	mainLocal, err := o.mainLocalBuildID(group, profile)
 	if err != nil {
-		o.log.Step(ui.StatusError, "read main buildid: %v", err)
 		return err
 	}
 	if target == "" {
@@ -129,36 +124,35 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 	o.log.Step(ui.StatusOK, "main on target %s — checking children", target)
 	o.log.Detail("pending_children=%d", len(gs.PendingChildren))
 
-	if !o.log.IsMutating() {
-		for _, id := range gs.PendingChildren {
-			child := group.ChildByUUID(id)
-			if child == nil {
-				continue
-			}
-			if !gs.ChildNeedsSync(id, target) {
-				o.log.Step(ui.StatusOK, "child %s already synced to %s", util.ShortUUID(id), target)
-				continue
-			}
-			o.log.Step(ui.StatusDry, "would stop → sync → start child %s (%s:%d)",
-				util.ShortUUID(id), child.QueryHost, child.QueryPort)
-		}
-		o.log.Step(ui.StatusWait, "%d child(ren) pending (retry on next run)", len(gs.PendingChildren))
-		return o.store.Save(group.Name, gs)
+	mutating := o.log.IsMutating()
+	var syncer *mount.Syncer
+	if mutating {
+		syncer = mount.New(o.cfg.Paths.Volumes, o.log)
 	}
-
-	syncer := mount.New(o.cfg.Paths.Volumes, o.log)
 	var remaining []string
 
 	for _, childUUID := range gs.PendingChildren {
 		child := group.ChildByUUID(childUUID)
 		if child == nil {
-			o.log.Step(ui.StatusWarn, "unknown child %s — removing from pending", util.ShortUUID(childUUID))
+			if mutating {
+				o.log.Step(ui.StatusWarn, "unknown child %s — removing from pending", util.ShortUUID(childUUID))
+			}
 			continue
 		}
 		short := util.ShortUUID(childUUID)
 
 		if !gs.ChildNeedsSync(childUUID, target) {
-			o.log.Step(ui.StatusOK, "child %s already synced to %s — skip", short, target)
+			if mutating {
+				o.log.Step(ui.StatusOK, "child %s already synced to %s — skip", short, target)
+			} else {
+				o.log.Step(ui.StatusOK, "child %s already synced to %s", short, target)
+			}
+			continue
+		}
+
+		if !mutating {
+			o.log.Step(ui.StatusDry, "would stop → sync → start child %s (%s:%d)",
+				short, child.QueryHost, child.QueryPort)
 			continue
 		}
 
@@ -171,6 +165,11 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 			o.log.Step(ui.StatusError, "child %s: %v", short, err)
 			remaining = append(remaining, childUUID)
 		}
+	}
+
+	if !mutating {
+		o.log.Step(ui.StatusWait, "%d child(ren) pending (retry on next run)", len(gs.PendingChildren))
+		return o.store.Save(group.Name, gs)
 	}
 
 	gs.PendingChildren = remaining

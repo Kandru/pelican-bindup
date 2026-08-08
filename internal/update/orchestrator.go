@@ -84,11 +84,7 @@ func (o *Orchestrator) Run(groupName string) error {
 			o.log.Step(ui.StatusError, "group %s: %v", group.Name, err)
 		}
 	}
-	o.log.Summary()
-	if o.log.Errors() > 0 {
-		return fmt.Errorf("%d error(s) during run", o.log.Errors())
-	}
-	return nil
+	return o.finish("run")
 }
 
 func (o *Orchestrator) runGroup(group config.GroupConfig) error {

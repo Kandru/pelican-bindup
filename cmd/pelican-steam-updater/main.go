@@ -115,7 +115,7 @@ func run() int {
 			return 1
 		}
 		up := selfupdate.New(cfg.SelfUpdate.GitHubRepo, version, log)
-		if err := up.Run(""); err != nil {
+		if err := up.Run(); err != nil {
 			log.Step(ui.StatusError, "%v", err)
 			log.Summary()
 			return 1

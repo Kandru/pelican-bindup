@@ -136,17 +136,6 @@ func (c *Config) applyDefaults() {
 	if c.Logging.RetainHours < 0 {
 		c.Logging.RetainHours = 0
 	}
-	for i := range c.Groups {
-		if c.Groups[i].UpdateCheckIntervalHours == 0 {
-			c.Groups[i].UpdateCheckIntervalHours = 1
-		}
-		if c.Groups[i].DeferUpdateMinutes == 0 {
-			c.Groups[i].DeferUpdateMinutes = 30
-		}
-		if c.Groups[i].Maintenance.RebootIntervalHours == 0 {
-			c.Groups[i].Maintenance.RebootIntervalHours = 24
-		}
-	}
 }
 
 func (c *Config) validate() error {

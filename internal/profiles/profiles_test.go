@@ -3,6 +3,8 @@ package profiles
 import (
 	"strings"
 	"testing"
+
+	"github.com/kandru/pelican-docker-mount-updater/internal/query"
 )
 
 func TestLoadCS2(t *testing.T) {
@@ -16,8 +18,8 @@ func TestLoadCS2(t *testing.T) {
 	if p.SteamAppID != 730 {
 		t.Fatalf("SteamAppID=%d, want 730", p.SteamAppID)
 	}
-	if p.QueryProtocol != QueryA2S {
-		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, QueryA2S)
+	if p.QueryProtocol != query.A2S {
+		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, query.A2S)
 	}
 	if p.ManifestRelative != "steamapps/appmanifest_730.acf" {
 		t.Fatalf("ManifestRelative=%q", p.ManifestRelative)
@@ -32,8 +34,8 @@ func TestLoadBFBC2(t *testing.T) {
 	if p.SteamEnabled() {
 		t.Fatal("bfbc2 should not have Steam enabled")
 	}
-	if p.QueryProtocol != QueryBFBC2 {
-		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, QueryBFBC2)
+	if p.QueryProtocol != query.BFBC2 {
+		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, query.BFBC2)
 	}
 	if p.ManifestRelative != "" {
 		t.Fatalf("ManifestRelative=%q, want empty", p.ManifestRelative)
@@ -128,8 +130,8 @@ func TestLoadWarfork(t *testing.T) {
 	if p.SteamAppID != 1136510 {
 		t.Fatalf("SteamAppID=%d, want 1136510", p.SteamAppID)
 	}
-	if p.QueryProtocol != QueryQuake3 {
-		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, QueryQuake3)
+	if p.QueryProtocol != query.Quake3 {
+		t.Fatalf("QueryProtocol=%q, want %q", p.QueryProtocol, query.Quake3)
 	}
 	if p.ManifestRelative != "steamapps/appmanifest_1136510.acf" {
 		t.Fatalf("ManifestRelative=%q", p.ManifestRelative)

@@ -28,12 +28,13 @@ Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
 | Path | Role |
 |------|------|
 | `cmd/pelican-steam-updater` | CLI entry |
-| `internal/update` | FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`lock`) |
+| `internal/update` | FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`group`,`lock`) |
 | `internal/mount` | bind mount sync + prune |
 | `internal/steam` | remote/local buildid; `Less` |
 | `internal/a2s` | UDP A2S_INFO |
 | `internal/bfbc2` | TCP RCON `serverInfo` player counts |
 | `internal/quake3` | UDP Quake3 `getstatus` player counts |
+| `internal/query` | query-protocol registry (dispatch to a2s/bfbc2/quake3) |
 | `internal/pelican` | Client API power/resources |
 | `internal/state` | YAML phase persistence |
 | `internal/config` | YAML load/validate + sidecars |
@@ -56,3 +57,4 @@ Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
 - Phase logic → `internal/update/{idle,children}.go`
 - Mount rules → `internal/profiles/*.yaml` + `mount/sync.go`
 - Config schema → `config.yaml.example` + `internal/config`
+- New query protocol → package under `internal/` + one line in `internal/query`

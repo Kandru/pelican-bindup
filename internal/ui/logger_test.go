@@ -21,9 +21,8 @@ func TestParseLineTime(t *testing.T) {
 	if !ok || !got.Equal(now) {
 		t.Fatalf("leading: got %v ok=%v", got, ok)
 	}
-	got, ok = parseLineTime(legacy)
-	if !ok || !got.Equal(now) {
-		t.Fatalf("legacy banner: got %v ok=%v", got, ok)
+	if _, ok := parseLineTime(legacy); ok {
+		t.Fatal("legacy trailing-timestamp banner should not parse")
 	}
 	if _, ok := parseLineTime(""); ok {
 		t.Fatal("empty should not parse")
@@ -57,8 +56,8 @@ func TestRetainRecentLinesDropsOrphans(t *testing.T) {
 
 	cutoff := time.Now().Add(-24 * time.Hour)
 	kept := retainRecentLines(path, cutoff)
-	if len(kept) != 3 {
-		t.Fatalf("kept %d lines, want 3:\n%s", len(kept), strings.Join(kept, "\n"))
+	if len(kept) != 2 {
+		t.Fatalf("kept %d lines, want 2:\n%s", len(kept), strings.Join(kept, "\n"))
 	}
 	for _, line := range kept {
 		if line == "" {
@@ -66,6 +65,9 @@ func TestRetainRecentLinesDropsOrphans(t *testing.T) {
 		}
 		if strings.Contains(line, old.Format(timeLayout)) {
 			t.Fatalf("old line retained: %q", line)
+		}
+		if !strings.HasPrefix(line, recent.Format(timeLayout)) {
+			t.Fatalf("untimed/legacy line retained: %q", line)
 		}
 	}
 }
