@@ -2,12 +2,12 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Run every 5 minutes; per-group update_check_interval_hours controls Steam polling.
-# Config defaults to config.yaml next to the binary (sidecar files use the same directory).
-*/5 * * * * /opt/pelican-steam-updater/pelican-steam-updater run >>/var/log/pelican-steam-updater.log 2>&1
+# Every 5 minutes — update orchestration / maintenance
+# Config defaults to config.yaml next to the binary.
+*/5 * * * * /opt/pelican-steam-updater/pelican-steam-updater run > /dev/null 2>&1
 
-# Re-apply bind mounts after host reboot
-@reboot /opt/pelican-steam-updater/pelican-steam-updater sync >>/var/log/pelican-steam-updater.log 2>&1
+# After reboot — re-apply bind mounts (mounts do not survive reboot)
+@reboot /opt/pelican-steam-updater/pelican-steam-updater sync > /dev/null 2>&1
 
 # Optional weekly self-update (enable in config first)
-# 0 4 * * 0 /opt/pelican-steam-updater/pelican-steam-updater self-update >>/var/log/pelican-steam-updater.log 2>&1
+# 0 4 * * 0 /opt/pelican-steam-updater/pelican-steam-updater self-update > /dev/null 2>&1

@@ -1,60 +1,50 @@
-# pelican-steam-updater — agent notes
+# pelican-steam-updater — AI notes
 
-Linux CLI (root on Wings): one **main** install; **children** get bind mounts. Cron ticks resume via sidecar state.
+Linux/root Wings CLI: one **main** install; **children** bind-mount it. Cron resumes via sidecar state.
 
-Profiles without `steam_app_id` skip Steam polling and the update FSM; idle ticks only run maintenance (empty restarts). Child mounts for those groups are applied via manual `sync`.
+No `steam_app_id` → skip Steam poll/FSM; idle = maintenance only; mounts via manual `sync`.
 
-## FSM (per Steam-enabled group)
+## FSM (Steam groups)
 
-`idle` → (defer) → `await_main_empty` → restart main → `await_children` → idle
+`idle` → defer → `await_main_empty` → restart main → `await_children` → idle
 
-- Steam poll gated by `update_check_interval_hours`; defer by `defer_update_minutes`.
-- Query fail-open (A2S / BFBC2 / quake3): unreachable = empty (safe to restart/sync). Protocol from `profile.query_protocol`.
-- Prod only mutates (`Logger.IsMutating`); dry-run/check-only do not.
-- `run` takes flock on `<config>.lock`.
+- Poll: `update_check_interval_hours`; defer: `defer_update_minutes`
+- Query fail-open (a2s/bfbc2/quake3): unreachable = empty. Protocol: `profile.query_protocol`
+- Mutate only in `prod` (`Logger.IsMutating`); `run` flocks `<config>.lock`
 
-## Update order (Steam profiles only)
+## Update order (Steam)
 
-1. Steam remote vs **main** volume buildid only (children share mounts — disk buildid is useless).
-2. Defer → if main behind target: wait empty → restart main (SteamCMD); if main already on target (e.g. maintenance): Discord update notice then children.
-3. `await_children`: wait until main local ≥ target, then each child via state `child_synced[uuid]`.
-4. Per child: already marked synced → skip; else empty → stop → `mount.Sync` → start → mark synced → Discord.
+1. Remote vs **main** volume buildid only — never child LocalBuildID (mounts mirror main)
+2. Defer → main behind? wait empty → restart (SteamCMD); else Discord then children
+3. `await_children`: main local ≥ target; per child via `child_synced[uuid]`
+4. Synced → skip; else empty → stop → `mount.Sync` → start → mark synced → Discord
 
-Idle “kids behind” = any child whose `child_synced` ≠ main local (same defer). New children after first bootstrap stay unsynced until that path runs.
-Manual `sync` force-applies mounts (no state skip). Maintenance: no Discord.
+Kids behind = `child_synced` ≠ main local (same defer). New children stay unsynced until that path. Manual `sync` force-applies (no state skip). Maintenance: no Discord.
 
 ## Packages
 
-| Path | Role |
-|------|------|
-| `cmd/pelican-steam-updater` | CLI entry |
-| `internal/update` | FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`group`,`lock`) |
-| `internal/mount` | bind mount sync + prune |
-| `internal/steam` | remote/local buildid; `Less` |
-| `internal/a2s` | UDP A2S_INFO |
-| `internal/bfbc2` | TCP RCON `serverInfo` player counts |
-| `internal/quake3` | UDP Quake3 `getstatus` player counts |
-| `internal/query` | query-protocol registry (dispatch to a2s/bfbc2/quake3) |
-| `internal/pelican` | Client API power/resources |
-| `internal/state` | YAML phase persistence |
-| `internal/config` | YAML load/validate + sidecars |
-| `internal/profiles` | embedded game sync rules + query protocol |
-| `internal/ui` | logger |
-| `internal/discord` | webhook |
-| `internal/selfupdate` | GH release binary replace |
-| `internal/util` | ShortUUID, Truncate |
+- `cmd/pelican-steam-updater` — CLI
+- `internal/update` — FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`group`,`lock`)
+- `internal/mount` — bind sync + prune
+- `internal/steam` — remote/local buildid; `Less`
+- `internal/a2s` | `bfbc2` | `quake3` — player queries
+- `internal/query` — protocol registry
+- `internal/pelican` — panel power/resources
+- `internal/state` — YAML phase persistence
+- `internal/config` — load/validate + sidecars
+- `internal/profiles` — embedded sync rules + query protocol
+- `internal/ui` | `discord` | `selfupdate` | `util`
 
 ## Invariants
 
-- Bind mounts need root; volumes under `paths.volumes`.
-- Children must not run their own SteamCMD for the shared tree.
-- Keep `internal/update` as small same-package files; don’t merge into one god file.
-- Don’t change query fail-open (unreachable = empty) or state-based per-child sync without an explicit ask.
-- Never use child volume LocalBuildID to decide sync (bind mounts mirror main).
+- Root + volumes under `paths.volumes`; children must not SteamCMD shared tree
+- Small same-package files in `internal/update` (no god file)
+- Don’t change fail-open or state-based child sync without explicit ask
+- Never use child LocalBuildID to decide sync
 
 ## Edit map
 
-- Phase logic → `internal/update/{idle,children}.go`
-- Mount rules → `internal/profiles/*.yaml` + `mount/sync.go`
-- Config schema → `config.yaml.example` + `internal/config`
-- New query protocol → package under `internal/` + one line in `internal/query`
+- Phases → `internal/update/{idle,children}.go`
+- Mounts → `internal/profiles/*.yaml` + `mount/sync.go`
+- Config → `config.yaml.example` + `internal/config`
+- New query protocol → `internal/<pkg>` + register in `internal/query`
