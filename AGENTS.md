@@ -21,6 +21,8 @@ No `steam_app_id` → skip Steam poll/FSM; idle = maintenance only; mounts via m
 
 Kids behind = `child_synced` ≠ main local (same defer). New children stay unsynced until that path. Manual `sync` force-applies (no state skip). Maintenance: no Discord.
 
+Child optional `profile`: still copies from main; sync exclusions + query_protocol use that profile (Steam/FSM stays on group profile).
+
 ## Packages
 
 - `cmd/pelican-steam-updater` — CLI

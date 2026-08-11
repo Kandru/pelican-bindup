@@ -80,7 +80,12 @@ func (o *Orchestrator) Test(groupName string) error {
 
 		o.testServer(group.Main, profile, "main")
 		for _, child := range group.Children {
-			o.testServer(child, profile, "child")
+			childProf, err := o.childProfile(group, child, profile)
+			if err != nil {
+				o.log.Step(ui.StatusError, "child %s profile: %v", util.ShortUUID(child.UUID), err)
+				continue
+			}
+			o.testServer(child, childProf, "child")
 		}
 		return nil
 	})
@@ -204,6 +209,11 @@ func (o *Orchestrator) Sync(groupName string) error {
 	o.eachGroup(groups, func(group config.GroupConfig, profile *profiles.Profile) error {
 		o.log.Section(fmt.Sprintf("Group %s  ·  sync", group.Name))
 		for _, child := range group.Children {
+			childProf, err := o.childProfile(group, child, profile)
+			if err != nil {
+				o.log.Step(ui.StatusError, "sync %s profile: %v", util.ShortUUID(child.UUID), err)
+				continue
+			}
 			wg.Add(1)
 			go func(mainUUID, childUUID string, profile *profiles.Profile) {
 				defer wg.Done()
@@ -212,7 +222,7 @@ func (o *Orchestrator) Sync(groupName string) error {
 				if err := syncer.Sync(mainUUID, childUUID, profile, apply); err != nil {
 					o.log.Step(ui.StatusError, "sync %s: %v", util.ShortUUID(childUUID), err)
 				}
-			}(group.Main.UUID, child.UUID, profile)
+			}(group.Main.UUID, child.UUID, childProf)
 		}
 		return nil
 	})

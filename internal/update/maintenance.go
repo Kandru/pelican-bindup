@@ -43,7 +43,16 @@ func (o *Orchestrator) maybeMaintenance(group config.GroupConfig, profile *profi
 			o.log.Detail("skip %s (uptime %s)", short, uptime.Round(time.Minute))
 			continue
 		}
-		if !o.serverEmpty(srv, profile, "maintenance "+short) {
+		queryProf := profile
+		if srv.UUID != group.Main.UUID {
+			childProf, err := o.childProfile(group, srv, profile)
+			if err != nil {
+				o.log.Step(ui.StatusWarn, "maintenance %s profile: %v", short, err)
+				continue
+			}
+			queryProf = childProf
+		}
+		if !o.serverEmpty(srv, queryProf, "maintenance "+short) {
 			continue
 		}
 

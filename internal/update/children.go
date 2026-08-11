@@ -157,11 +157,17 @@ func (o *Orchestrator) tickAwaitChildren(group config.GroupConfig, profile *prof
 		}
 
 		o.log.Step(ui.StatusStart, "child %s needs sync to %s", short, target)
-		if !o.serverEmpty(*child, profile, "child "+short) {
+		childProf, err := o.childProfile(group, *child, profile)
+		if err != nil {
+			o.log.Step(ui.StatusError, "child %s profile: %v", short, err)
 			remaining = append(remaining, childUUID)
 			continue
 		}
-		if err := o.syncChild(group, childUUID, profile, syncer, gs, target); err != nil {
+		if !o.serverEmpty(*child, childProf, "child "+short) {
+			remaining = append(remaining, childUUID)
+			continue
+		}
+		if err := o.syncChild(group, childUUID, childProf, syncer, gs, target); err != nil {
 			o.log.Step(ui.StatusError, "child %s: %v", short, err)
 			remaining = append(remaining, childUUID)
 		}

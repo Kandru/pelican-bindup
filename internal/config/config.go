@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
+	"github.com/kandru/pelican-docker-mount-updater/internal/util"
 	"gopkg.in/yaml.v3"
 )
 
@@ -103,6 +104,10 @@ type ServerEndpoint struct {
 	UUID      string `yaml:"uuid"`
 	QueryHost string `yaml:"query_host"`
 	QueryPort int    `yaml:"query_port"`
+	// Profile optionally overrides the group profile for this child only.
+	// Sync still copies from main; exclusions / query_protocol follow this profile.
+	// Ignored on main (group.profile always applies).
+	Profile string `yaml:"profile,omitempty"`
 }
 
 func Load(path string) (*Config, error) {
@@ -163,11 +168,34 @@ func (c *Config) validate() error {
 		if g.Main.UUID == "" {
 			return fmt.Errorf("group %q: main uuid is required", g.Name)
 		}
+		if g.Main.Profile != "" {
+			return fmt.Errorf("group %q: main must not set profile (use group profile)", g.Name)
+		}
 		if _, err := profiles.Load(g.Profile); err != nil {
 			return fmt.Errorf("group %q: %w", g.Name, err)
 		}
+		for i, child := range g.Children {
+			if child.UUID == "" {
+				return fmt.Errorf("group %q: children[%d]: uuid is required", g.Name, i)
+			}
+			if child.Profile == "" {
+				continue
+			}
+			if _, err := profiles.Load(child.Profile); err != nil {
+				return fmt.Errorf("group %q: children[%d] (%s): %w", g.Name, i, util.ShortUUID(child.UUID), err)
+			}
+		}
 	}
 	return nil
+}
+
+// ChildProfileName returns the profile used for a child's sync exclusions and query protocol.
+// Empty child.Profile falls back to the group profile. Source files still come from main.
+func (g *GroupConfig) ChildProfileName(child ServerEndpoint) string {
+	if child.Profile != "" {
+		return child.Profile
+	}
+	return g.Profile
 }
 
 func (c *Config) GroupByName(name string) (*GroupConfig, error) {

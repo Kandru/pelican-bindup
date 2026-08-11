@@ -36,6 +36,16 @@ func (o *Orchestrator) eachGroup(groups []config.GroupConfig, fn func(config.Gro
 	}
 }
 
+// childProfile returns the profile for a child's sync exclusions and query protocol.
+// Falls back to the group profile when the child has no override. Steam/FSM still uses groupProfile.
+func (o *Orchestrator) childProfile(group config.GroupConfig, child config.ServerEndpoint, groupProfile *profiles.Profile) (*profiles.Profile, error) {
+	name := group.ChildProfileName(child)
+	if name == group.Profile {
+		return groupProfile, nil
+	}
+	return profiles.Load(name)
+}
+
 func (o *Orchestrator) finish(what string) error {
 	o.log.Summary()
 	if o.log.Errors() > 0 {

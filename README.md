@@ -50,9 +50,15 @@ groups:
       - uuid: ...
         query_host: server.example.com
         query_port: 27016
+      - uuid: ...
+        query_host: server.example.com
+        query_port: 27017
+        # Optional: use another profile's sync exclusions / query_protocol.
+        # Files still come from main; Steam/FSM still follow the group profile.
+        # profile: warfork
 ```
 
-Embedded profiles: `cs2`, `bfbc2`, `warfork` (sync rules ship inside the binary).
+Embedded profiles: `cs2`, `bfbc2`, `warfork` (sync rules ship inside the binary). Children may set `profile` to use a different profile's copy rules while still bind-mounting from main.
 
 ## Commands
 

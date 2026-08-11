@@ -88,7 +88,9 @@ groups:
       query_host: 127.0.0.1
       query_port: 27015
 
-    # Child servers: receive bind-mounted files from main; stop → sync → start on update
+    # Child servers: receive bind-mounted files from main; stop → sync → start on update.
+    # Optional per-child profile: still copies from main, but uses that profile's
+    # sync exclusions / query_protocol instead of the group profile.
     children:
       - uuid: a668b846-22f9-41c8-88f1-cb1326671101
         query_host: 127.0.0.1
@@ -96,6 +98,7 @@ groups:
       - uuid: ec0e85c6-e2dc-4de6-b04b-fc7d0695b738
         query_host: 127.0.0.1
         query_port: 27017
+        # profile: cs2   # optional override (defaults to group profile)
       - uuid: d58f4422-62a8-48b2-8eef-51c6ee74179c
         query_host: 127.0.0.1
         query_port: 27018
