@@ -12,8 +12,8 @@ Large games (e.g. CS2) can take tens of gigabytes per server. With N independent
 
 - Linux Wings host with bind-mount support (run as **root**)
 - Pelican Client API key (`ptlc_…`) with access to all configured servers
-- Query host/port per server (protocol depends on the game profile)
-- For Steam profiles: children must **not** run their own SteamCMD update on the shared tree
+- Query host/port per server (to check the server for players)
+- For Steam profiles: children must **not** run their own SteamCMD update (disable within Pelican Webinterface)
 
 ## Installation
 
@@ -38,6 +38,13 @@ Config and sidecar files (`config.state.yaml`, `config.lock`, optional log) live
 
 ## Configuration
 
+**Important**: You need one fully installed game server acting as the main server. For every child:
+
+Fully install the game server once, **or** create the server in Pelican and skip installation.
+**Sync** data from the main server with this tool.
+Manually copy any files still missing (see **Profiles** below) before the first start.
+Skipping step 3 often causes crashes on first launch because required data is still missing.
+
 See [`config.yaml.example`](config.yaml.example) for the full reference. A group is one main plus its children:
 
 ```yaml
@@ -60,13 +67,26 @@ groups:
         # profile: warfork
 ```
 
-Embedded profiles: `cs2`, `bfbc2`, `warfork` (sync rules ship inside the binary). Children may set `profile` to use a different profile's copy rules while still bind-mounting from main.
+## Profiles
+
+### Battlefield Bad Company 2
+
+- `bfbc2` - syncs everything; except **instance/**
+- `bfbc2` - syncs everything; except **instante/** and **dist/**
+
+### Counter-Strike:2
+
+- `cs2` - syncs everything; except **game/csgo/addons** and **game/csgo/cfg**
+
+### Warfork
+
+- `warfork` - syncs everything; except **basewf/data*.pk3** and **basewf/modules*.pk3**
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `run` | Cron tick — update orchestration and maintenance |
+| `run` | Cron tick — update orchestration and reboot |
 | `sync` | Re-apply bind mounts (needed after reboot) |
 | `test` | Verify panel, Steam (if used), query, Discord |
 | `status` | Show group phases and server states |
@@ -83,7 +103,7 @@ pelican-bindup sync -group cs2-example
 Run as root on the Wings host. Config must sit next to the binary (or pass `-config`).
 
 ```cron
-# Every 5 minutes — update orchestration / maintenance
+# Every 5 minutes — update orchestration / reboot
 */5 * * * * /opt/pelican-bindup/pelican-bindup run > /dev/null 2>&1
 
 # After reboot — re-apply bind mounts (mounts do not survive reboot)
