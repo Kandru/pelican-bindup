@@ -1,4 +1,6 @@
-# pelican-steam-updater — AI notes
+# pelican-bindup — AI notes
+
+*One install, many servers — bound together, kept up to date.*
 
 Linux/root Wings CLI: one **main** install; **children** bind-mount it. Cron resumes via sidecar state.
 
@@ -25,7 +27,7 @@ Child optional `profile`: still copies from main; sync exclusions + query_protoc
 
 ## Packages
 
-- `cmd/pelican-steam-updater` — CLI
+- `cmd/pelican-bindup` — CLI
 - `internal/update` — FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`group`,`lock`)
 - `internal/mount` — bind sync + prune
 - `internal/steam` — remote/local buildid; `Less`

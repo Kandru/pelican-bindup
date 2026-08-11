@@ -47,5 +47,5 @@ func (c *Client) Send(content string) error {
 }
 
 func (c *Client) SendTest() error {
-	return c.Send("pelican-steam-updater test notification — Discord webhook is working.")
+	return c.Send("pelican-bindup test notification — Discord webhook is working.")
 }

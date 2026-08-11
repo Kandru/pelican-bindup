@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/a2s"
-	"github.com/kandru/pelican-docker-mount-updater/internal/bfbc2"
-	"github.com/kandru/pelican-docker-mount-updater/internal/quake3"
+	"github.com/kandru/pelican-bindup/internal/a2s"
+	"github.com/kandru/pelican-bindup/internal/bfbc2"
+	"github.com/kandru/pelican-bindup/internal/quake3"
 )
 
 // Func queries a game server for current and max player counts.

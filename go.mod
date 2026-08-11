@@ -1,4 +1,4 @@
-module github.com/kandru/pelican-docker-mount-updater
+module github.com/kandru/pelican-bindup
 
 go 1.22
 

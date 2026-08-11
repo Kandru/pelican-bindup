@@ -8,4 +8,4 @@ COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 ENV CGO_ENABLED=0
-RUN go build -trimpath -o /pelican-steam-updater ./cmd/pelican-steam-updater
+RUN go build -trimpath -o /pelican-bindup ./cmd/pelican-bindup

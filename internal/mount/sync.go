@@ -10,9 +10,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
-	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
-	"github.com/kandru/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-bindup/internal/profiles"
+	"github.com/kandru/pelican-bindup/internal/ui"
+	"github.com/kandru/pelican-bindup/internal/util"
 )
 
 type Syncer struct {

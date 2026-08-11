@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/config"
-	"github.com/kandru/pelican-docker-mount-updater/internal/mount"
-	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
-	"github.com/kandru/pelican-docker-mount-updater/internal/state"
-	"github.com/kandru/pelican-docker-mount-updater/internal/steam"
-	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
-	"github.com/kandru/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-bindup/internal/config"
+	"github.com/kandru/pelican-bindup/internal/mount"
+	"github.com/kandru/pelican-bindup/internal/profiles"
+	"github.com/kandru/pelican-bindup/internal/state"
+	"github.com/kandru/pelican-bindup/internal/steam"
+	"github.com/kandru/pelican-bindup/internal/ui"
+	"github.com/kandru/pelican-bindup/internal/util"
 )
 
 func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *profiles.Profile, gs *state.GroupState) error {

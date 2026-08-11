@@ -1,4 +1,6 @@
-# pelican-steam-updater
+# pelican-bindup
+
+*One install, many servers — bound together, kept up to date.*
 
 Linux CLI for [Pelican](https://pelican.dev) Wings hosts. One **main** game server holds the real install; **child** servers share those files via bind mounts. A cron tick checks for Steam updates, restarts servers only when empty, and keeps children in sync — without every server running its own SteamCMD copy.
 
@@ -15,19 +17,19 @@ Large games (e.g. CS2) can take tens of gigabytes per server. With N independent
 
 ## Installation
 
-1. Download the latest release for your architecture from [GitHub Releases](https://github.com/kandru/pelican-docker-mount-updater/releases).
-2. Install the binary and config into one directory (e.g. `/opt/pelican-steam-updater/`):
+1. Download the latest release for your architecture from [GitHub Releases](https://github.com/kandru/pelican-bindup/releases).
+2. Install the binary and config into one directory (e.g. `/opt/pelican-bindup/`):
 
 ```bash
-install -m 755 pelican-steam-updater_linux_amd64 /opt/pelican-steam-updater/pelican-steam-updater
-cp config.yaml.example /opt/pelican-steam-updater/config.yaml
+install -m 755 pelican-bindup_linux_amd64 /opt/pelican-bindup/pelican-bindup
+cp config.yaml.example /opt/pelican-bindup/config.yaml
 ```
 
 3. Edit `config.yaml` — panel URL, API key, server UUIDs, query addresses.
 4. Verify connectivity:
 
 ```bash
-/opt/pelican-steam-updater/pelican-steam-updater test
+/opt/pelican-bindup/pelican-bindup test
 ```
 
 5. Add the [cron entries](#cron) below.
@@ -72,8 +74,8 @@ Embedded profiles: `cs2`, `bfbc2`, `warfork` (sync rules ship inside the binary)
 Useful flags: `-config`, `-mode prod|dry-run|check-only`, `-group <name>`.
 
 ```bash
-pelican-steam-updater run -mode dry-run   # preview a tick
-pelican-steam-updater sync -group cs2-example
+pelican-bindup run -mode dry-run   # preview a tick
+pelican-bindup sync -group cs2-example
 ```
 
 ## Cron
@@ -82,13 +84,13 @@ Run as root on the Wings host. Config must sit next to the binary (or pass `-con
 
 ```cron
 # Every 5 minutes — update orchestration / maintenance
-*/5 * * * * /opt/pelican-steam-updater/pelican-steam-updater run > /dev/null 2>&1
+*/5 * * * * /opt/pelican-bindup/pelican-bindup run > /dev/null 2>&1
 
 # After reboot — re-apply bind mounts (mounts do not survive reboot)
-@reboot /opt/pelican-steam-updater/pelican-steam-updater sync > /dev/null 2>&1
+@reboot /opt/pelican-bindup/pelican-bindup sync > /dev/null 2>&1
 ```
 
-To keep a log file instead of discarding output, redirect to a path (e.g. `>>/var/log/pelican-steam-updater.log 2>&1`). A ready-to-edit copy is in [`docs/crontab.example`](docs/crontab.example).
+To keep a log file instead of discarding output, redirect to a path (e.g. `>>/var/log/pelican-bindup.log 2>&1`). A ready-to-edit copy is in [`docs/crontab.example`](docs/crontab.example).
 
 ## Building from source
 

@@ -1,6 +1,6 @@
 //go:build linux
 
-// Command pelican-steam-updater: cron CLI for Pelican Steam main/child mount sync.
+// Command pelican-bindup: cron CLI for Pelican Wings main/child bind-mount sync and updates.
 package main
 
 import (
@@ -9,10 +9,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/config"
-	"github.com/kandru/pelican-docker-mount-updater/internal/selfupdate"
-	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
-	"github.com/kandru/pelican-docker-mount-updater/internal/update"
+	"github.com/kandru/pelican-bindup/internal/config"
+	"github.com/kandru/pelican-bindup/internal/selfupdate"
+	"github.com/kandru/pelican-bindup/internal/ui"
+	"github.com/kandru/pelican-bindup/internal/update"
 )
 
 var version = "dev"
@@ -155,10 +155,10 @@ func normalizeFlagNames(args []string) []string {
 
 func usage() {
 	defaultConfig := config.DefaultConfigPath()
-	fmt.Fprintf(os.Stderr, `pelican-steam-updater — Pelican Steam main/child updater
+	fmt.Fprintf(os.Stderr, `pelican-bindup — One install, many servers — bound together, kept up to date.
 
 Usage:
-  pelican-steam-updater <command> [flags]
+  pelican-bindup <command> [flags]
 
 Commands:
   run            cron tick (update orchestration + maintenance; -group to limit)

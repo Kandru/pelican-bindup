@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/config"
-	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
-	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-bindup/internal/config"
+	"github.com/kandru/pelican-bindup/internal/profiles"
+	"github.com/kandru/pelican-bindup/internal/ui"
 )
 
 func testLogger() *ui.Logger {

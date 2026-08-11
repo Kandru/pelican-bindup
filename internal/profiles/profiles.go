@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/query"
+	"github.com/kandru/pelican-bindup/internal/query"
 	"gopkg.in/yaml.v3"
 )
 

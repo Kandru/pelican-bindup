@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-bindup/internal/config"
 )
 
 const timeLayout = "2006-01-02 15:04:05"
@@ -77,7 +77,7 @@ func (l *Logger) Close() {
 func (l *Logger) Banner(version, command string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	msg := fmt.Sprintf("pelican-steam-updater  v%s  ·  %s  ·  mode=%s", version, command, l.mode)
+	msg := fmt.Sprintf("pelican-bindup  v%s  ·  %s  ·  mode=%s", version, command, l.mode)
 	l.line(l.cyan(msg), msg)
 	l.emit("", "")
 }

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/profiles"
-	"github.com/kandru/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-bindup/internal/profiles"
+	"github.com/kandru/pelican-bindup/internal/util"
 	"gopkg.in/yaml.v3"
 )
 

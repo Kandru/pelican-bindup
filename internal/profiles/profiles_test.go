@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/query"
+	"github.com/kandru/pelican-bindup/internal/query"
 )
 
 func TestLoadCS2(t *testing.T) {

@@ -49,8 +49,8 @@ jobs:
           gh release create "${{ steps.ver.outputs.tag }}" \
             --title "Release ${{ steps.ver.outputs.tag }}" \
             --notes "Automated release for VERSION ${{ steps.ver.outputs.version }}" \
-            dist/pelican-steam-updater_linux_amd64.tar.gz \
-            dist/pelican-steam-updater_linux_arm64.tar.gz \
+            dist/pelican-bindup_linux_amd64.tar.gz \
+            dist/pelican-bindup_linux_arm64.tar.gz \
             dist/checksums.txt
 
       - name: Prune old releases (keep 5)

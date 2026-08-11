@@ -1,5 +1,5 @@
 VERSION := $(shell cat VERSION)
-BINARY := pelican-steam-updater
+BINARY := pelican-bindup
 DIST := dist
 GOOS ?= linux
 GOARCH ?= amd64
@@ -46,7 +46,7 @@ build: ensure-cache
 			-trimpath \
 			-ldflags "-s -w -X main.version=$(VERSION)" \
 			-o /src/$(DIST)/$(BINARY)_$(GOOS)_$(GOARCH) \
-			./cmd/pelican-steam-updater && \
+			./cmd/pelican-bindup && \
 		chmod +x /src/$(DIST)/$(BINARY)_$(GOOS)_$(GOARCH)'
 	@echo "→ $(DIST)/$(BINARY)_$(GOOS)_$(GOARCH)"
 

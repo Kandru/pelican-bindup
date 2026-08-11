@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/config"
+	"github.com/kandru/pelican-bindup/internal/config"
 )
 
 func TestParseLineTime(t *testing.T) {
 	now := time.Date(2026, 7, 26, 22, 15, 1, 0, time.Local)
-	leading := now.Format(timeLayout) + "  pelican-steam-updater  v1.0.0  ·  run  ·  mode=prod"
-	legacy := "pelican-steam-updater  v1.0.0  ·  run  ·  mode=prod  ·  " + now.Format(timeLayout)
+	leading := now.Format(timeLayout) + "  pelican-bindup  v1.0.0  ·  run  ·  mode=prod"
+	legacy := "pelican-bindup  v1.0.0  ·  run  ·  mode=prod  ·  " + now.Format(timeLayout)
 
 	got, ok := parseLineTime(leading)
 	if !ok || !got.Equal(now) {
@@ -40,14 +40,14 @@ func TestRetainRecentLinesDropsOrphans(t *testing.T) {
 	recent := time.Now().Add(-1 * time.Hour).Truncate(time.Second)
 
 	content := strings.Join([]string{
-		"pelican-steam-updater  v1.0.0  ·  run  ·  mode=prod  ·  " + old.Format(timeLayout),
+		"pelican-bindup  v1.0.0  ·  run  ·  mode=prod  ·  " + old.Format(timeLayout),
 		"",
 		"",
 		old.Format(timeLayout) + "  ✓  no update needed",
-		"pelican-steam-updater  v1.0.0  ·  run  ·  mode=prod  ·  " + recent.Format(timeLayout),
+		"pelican-bindup  v1.0.0  ·  run  ·  mode=prod  ·  " + recent.Format(timeLayout),
 		"",
 		recent.Format(timeLayout) + "  ✓  no update needed",
-		recent.Format(timeLayout) + "  pelican-steam-updater  v1.0.0  ·  run  ·  mode=prod",
+		recent.Format(timeLayout) + "  pelican-bindup  v1.0.0  ·  run  ·  mode=prod",
 		"",
 	}, "\n") + "\n"
 	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {

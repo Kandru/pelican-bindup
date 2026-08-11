@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/ui"
+	"github.com/kandru/pelican-bindup/internal/ui"
 )
 
 type Updater struct {
@@ -33,7 +33,7 @@ func (u *Updater) Run() error {
 	}
 
 	u.log.Step(ui.StatusStart, "check latest release for %s", u.repo)
-	assetName := fmt.Sprintf("pelican-steam-updater_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
+	assetName := fmt.Sprintf("pelican-bindup_%s_%s.tar.gz", runtime.GOOS, runtime.GOARCH)
 
 	client := &http.Client{Timeout: 60 * time.Second}
 	req, err := http.NewRequest(http.MethodGet, "https://api.github.com/repos/"+u.repo+"/releases/latest", nil)
@@ -41,7 +41,7 @@ func (u *Updater) Run() error {
 		return fmt.Errorf("github request: %w", err)
 	}
 	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "pelican-steam-updater")
+	req.Header.Set("User-Agent", "pelican-bindup")
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -80,7 +80,7 @@ func (u *Updater) Run() error {
 	}
 
 	u.log.Step(ui.StatusStart, "download %s from %s", assetName, release.TagName)
-	tmpDir, err := os.MkdirTemp("", "pelican-steam-updater-*")
+	tmpDir, err := os.MkdirTemp("", "pelican-bindup-*")
 	if err != nil {
 		return err
 	}
@@ -140,7 +140,7 @@ func extractBinary(archivePath, destDir string) (string, error) {
 	}
 	defer gz.Close()
 
-	out := filepath.Join(destDir, "pelican-steam-updater")
+	out := filepath.Join(destDir, "pelican-bindup")
 	tr := tar.NewReader(gz)
 	for {
 		hdr, err := tr.Next()
@@ -150,7 +150,7 @@ func extractBinary(archivePath, destDir string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		if hdr.Typeflag != tar.TypeReg || !strings.Contains(hdr.Name, "pelican-steam-updater") {
+		if hdr.Typeflag != tar.TypeReg || !strings.Contains(hdr.Name, "pelican-bindup") {
 			continue
 		}
 		w, err := os.OpenFile(out, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o755)

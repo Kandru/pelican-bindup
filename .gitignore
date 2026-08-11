@@ -4,8 +4,8 @@ config.yaml
 # Build output
 dist/
 .cache/
-/pelican-steam-updater
-/pelican-steam-updater_*
+/pelican-bindup
+/pelican-bindup_*
 
 # Runtime sidecar files (created next to config.yaml)
 *.log

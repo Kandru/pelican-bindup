@@ -1,5 +1,5 @@
 ---
-description: pelican-steam-updater agent constraints
+description: pelican-bindup agent constraints (Pelican Wings bind-mount updater)
 alwaysApply: true
 ---
 

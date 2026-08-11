@@ -10,7 +10,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kandru/pelican-docker-mount-updater/internal/util"
+	"github.com/kandru/pelican-bindup/internal/util"
 )
 
 type Client struct {
