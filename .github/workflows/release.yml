@@ -35,6 +35,28 @@ jobs:
       - name: Build release artifacts
         run: make release
 
+      - name: Generate release notes
+        env:
+          REPO: ${{ github.repository }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          PREV_TAG=$(git tag --sort=-v:refname 2>/dev/null | head -1 || true)
+
+          {
+            echo "Automated release for VERSION ${VERSION}"
+            echo ""
+          } > /tmp/release-notes.md
+
+          if [ -n "$PREV_TAG" ]; then
+            RANGE="${PREV_TAG}..HEAD"
+          else
+            RANGE="HEAD"
+          fi
+
+          git log --format='%H|%s' "${RANGE}" | while IFS='|' read -r sha subject; do
+            echo "- [${subject}](https://github.com/${REPO}/commit/${sha})" >> /tmp/release-notes.md
+          done
+
       - name: Create and push tag
         run: |
           git config user.name "github-actions[bot]"
@@ -48,7 +70,7 @@ jobs:
         run: |
           gh release create "${{ steps.ver.outputs.tag }}" \
             --title "Release ${{ steps.ver.outputs.tag }}" \
-            --notes "Automated release for VERSION ${{ steps.ver.outputs.version }}" \
+            --notes-file /tmp/release-notes.md \
             dist/pelican-bindup_linux_amd64.tar.gz \
             dist/pelican-bindup_linux_arm64.tar.gz \
             dist/checksums.txt
