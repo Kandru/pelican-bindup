@@ -64,19 +64,25 @@ type SelfUpdateConfig struct {
 	Enabled    bool   `yaml:"enabled"`
 }
 
-type MaintenanceConfig struct {
-	Enabled             bool `yaml:"enabled"`
-	RebootIntervalHours int  `yaml:"reboot_interval_hours"`
+type RebootConfig struct {
+	Enabled       bool `yaml:"enabled"`
+	IntervalHours int  `yaml:"interval_hours"`
+}
+
+// RebootOverride optionally overrides group reboot settings on a child server.
+type RebootOverride struct {
+	Enabled       *bool `yaml:"enabled,omitempty"`
+	IntervalHours *int  `yaml:"interval_hours,omitempty"`
 }
 
 type GroupConfig struct {
-	Name                     string            `yaml:"name"`
-	Profile                  string            `yaml:"profile"`
-	UpdateCheckIntervalHours float64           `yaml:"update_check_interval_hours"`
-	DeferUpdateMinutes       int               `yaml:"defer_update_minutes"`
-	Maintenance              MaintenanceConfig `yaml:"maintenance"`
-	Main                     ServerEndpoint    `yaml:"main"`
-	Children                 []ServerEndpoint  `yaml:"children"`
+	Name                     string           `yaml:"name"`
+	Profile                  string           `yaml:"profile"`
+	UpdateCheckIntervalHours float64          `yaml:"update_check_interval_hours"`
+	DeferUpdateMinutes       int              `yaml:"defer_update_minutes"`
+	Reboot                   RebootConfig     `yaml:"reboot"`
+	Main                     ServerEndpoint   `yaml:"main"`
+	Children                 []ServerEndpoint `yaml:"children"`
 }
 
 func (g *GroupConfig) UpdateCheckInterval() time.Duration {
@@ -93,11 +99,25 @@ func (g *GroupConfig) DeferUpdateInterval() time.Duration {
 	return time.Duration(g.DeferUpdateMinutes) * time.Minute
 }
 
-func (g *GroupConfig) MaintenanceInterval() time.Duration {
-	if g.Maintenance.RebootIntervalHours <= 0 {
+func (c RebootConfig) Interval() time.Duration {
+	if c.IntervalHours <= 0 {
 		return 24 * time.Hour
 	}
-	return time.Duration(g.Maintenance.RebootIntervalHours) * time.Hour
+	return time.Duration(c.IntervalHours) * time.Hour
+}
+
+// RebootFor returns reboot settings for a server, merging optional child overrides.
+func (g *GroupConfig) RebootFor(srv ServerEndpoint) RebootConfig {
+	cfg := g.Reboot
+	if srv.Reboot != nil {
+		if srv.Reboot.Enabled != nil {
+			cfg.Enabled = *srv.Reboot.Enabled
+		}
+		if srv.Reboot.IntervalHours != nil && *srv.Reboot.IntervalHours > 0 {
+			cfg.IntervalHours = *srv.Reboot.IntervalHours
+		}
+	}
+	return cfg
 }
 
 type ServerEndpoint struct {
@@ -108,6 +128,9 @@ type ServerEndpoint struct {
 	// Sync still copies from main; exclusions / query_protocol follow this profile.
 	// Ignored on main (group.profile always applies).
 	Profile string `yaml:"profile,omitempty"`
+	// Reboot optionally overrides group reboot settings for this child only.
+	// Ignored on main (group.reboot always applies).
+	Reboot *RebootOverride `yaml:"reboot,omitempty"`
 }
 
 func Load(path string) (*Config, error) {
@@ -170,6 +193,9 @@ func (c *Config) validate() error {
 		}
 		if g.Main.Profile != "" {
 			return fmt.Errorf("group %q: main must not set profile (use group profile)", g.Name)
+		}
+		if g.Main.Reboot != nil {
+			return fmt.Errorf("group %q: main must not set reboot (use group reboot)", g.Name)
 		}
 		if _, err := profiles.Load(g.Profile); err != nil {
 			return fmt.Errorf("group %q: %w", g.Name, err)

@@ -51,7 +51,7 @@ logging:
 discord:
   # Optional Discord webhook for update notifications (test command sends a test message).
   # Message: "<group> - <panel hostname> has been updated from <old> to <new>"
-  # Notifies on main + each child during Steam updates; not on maintenance reboots.
+  # Notifies on main + each child during Steam updates; not on periodic reboots.
   # webhook_url: https://discord.com/api/webhooks/...
 
 groups:
@@ -71,14 +71,14 @@ groups:
     # (buffers phased Steam rollouts). Ignored for non-Steam profiles. Default: 30
     defer_update_minutes: 30
 
-    maintenance:
-      # Periodic hygiene reboots to reduce lag on long uptimes (skipped during updates)
+    reboot:
+      # Periodic empty-server reboots to reduce lag on long uptimes (skipped during updates)
       enabled: true
 
       # Reboot a server when empty if it has been running at least this long (hours)
       # and was not rebooted recently. Update restarts count toward this timer.
       # Default: 24
-      reboot_interval_hours: 2
+      interval_hours: 2
 
     # Main server: downloads Steam updates via its egg on restart
     main:
@@ -99,6 +99,8 @@ groups:
         query_host: 127.0.0.1
         query_port: 27017
         # profile: cs2   # optional override (defaults to group profile)
+        # reboot:        # optional override (defaults to group reboot)
+        #   interval_hours: 4
       - uuid: d58f4422-62a8-48b2-8eef-51c6ee74179c
         query_host: 127.0.0.1
         query_port: 27018
@@ -107,9 +109,9 @@ groups:
   # - name: cs2-other
   #   profile: cs2
   #   update_check_interval_hours: 24
-  #   maintenance:
+  #   reboot:
   #     enabled: true
-  #     reboot_interval_hours: 24
+  #     interval_hours: 24
   #   main:
   #     uuid: ...
   #     query_host: 127.0.0.1
@@ -120,14 +122,14 @@ groups:
   #       query_port: 27021
 
   # Non-Steam example (BFBC2): no steam_app_id in profile → no Steam poll / update FSM.
-  # Idle ticks only run maintenance empty-restarts. After updating main manually:
+  # Idle ticks only run empty-server reboots. After updating main manually:
   #   pelican-bindup sync -group bfbc2-squad
   # query_port must be the RCON port (TCP), not the game port.
   # - name: bfbc2-squad
   #   profile: bfbc2
-  #   maintenance:
+  #   reboot:
   #     enabled: true
-  #     reboot_interval_hours: 2
+  #     interval_hours: 2
   #   main:
   #     uuid: ...
   #     query_host: 127.0.0.1

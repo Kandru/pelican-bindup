@@ -2,7 +2,7 @@
 SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
-# Every 5 minutes — update orchestration / maintenance
+# Every 5 minutes — update orchestration / reboot
 # Config defaults to config.yaml next to the binary.
 */5 * * * * /opt/pelican-bindup/pelican-bindup run > /dev/null 2>&1
 

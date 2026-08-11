@@ -138,8 +138,8 @@ func (o *Orchestrator) Status() error {
 		}
 		o.log.Detail("update_check_interval=%s", group.UpdateCheckInterval())
 		o.log.Detail("defer_update=%s", group.DeferUpdateInterval())
-		if group.Maintenance.Enabled {
-			o.log.Detail("maintenance_reboot_interval=%s", group.MaintenanceInterval())
+		if group.Reboot.Enabled {
+			o.log.Detail("reboot_interval=%s", group.Reboot.Interval())
 		}
 		if gs.CachedRemoteBuildID != "" {
 			o.log.Detail("cached_remote_buildid=%s", gs.CachedRemoteBuildID)

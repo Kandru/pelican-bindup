@@ -25,7 +25,7 @@ func (o *Orchestrator) tickAwaitMainEmpty(group config.GroupConfig, profile *pro
 		return err
 	}
 
-	// Main already updated (e.g. maintenance) while we waited for empty — skip redundant restart.
+	// Main already updated (e.g. reboot) while we waited for empty — skip redundant restart.
 	if gs.TargetBuildID != "" && local != "" && !steam.Less(local, gs.TargetBuildID) {
 		return o.advanceToChildren(group, profile, gs, gs.SyncedBuildID, "skipping restart, syncing children")
 	}

@@ -4,7 +4,7 @@
 
 Linux/root Wings CLI: one **main** install; **children** bind-mount it. Cron resumes via sidecar state.
 
-No `steam_app_id` → skip Steam poll/FSM; idle = maintenance only; mounts via manual `sync`.
+No `steam_app_id` → skip Steam poll/FSM; idle = reboot only; mounts via manual `sync`.
 
 ## FSM (Steam groups)
 
@@ -21,14 +21,14 @@ No `steam_app_id` → skip Steam poll/FSM; idle = maintenance only; mounts via m
 3. `await_children`: main local ≥ target; per child via `child_synced[uuid]`
 4. Synced → skip; else empty → stop → `mount.Sync` → start → mark synced → Discord
 
-Kids behind = `child_synced` ≠ main local (same defer). New children stay unsynced until that path. Manual `sync` force-applies (no state skip). Maintenance: no Discord.
+Kids behind = `child_synced` ≠ main local (same defer). New children stay unsynced until that path. Manual `sync` force-applies (no state skip). Reboot: no Discord.
 
 Child optional `profile`: still copies from main; sync exclusions + query_protocol use that profile (Steam/FSM stays on group profile).
 
 ## Packages
 
 - `cmd/pelican-bindup` — CLI
-- `internal/update` — FSM + commands (`idle`,`children`,`maintenance`,`query`,`commands`,`group`,`lock`)
+- `internal/update` — FSM + commands (`idle`,`children`,`reboot`,`query`,`commands`,`group`,`lock`)
 - `internal/mount` — bind sync + prune
 - `internal/steam` — remote/local buildid; `Less`
 - `internal/a2s` | `bfbc2` | `quake3` — player queries

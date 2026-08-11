@@ -19,7 +19,7 @@ func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Prof
 			gs.ClearUpdatePending()
 			gs.PendingChildren = nil
 		}
-		o.maybeMaintenance(group, profile, gs)
+		o.maybeReboot(group, profile, gs)
 		return o.store.Save(group.Name, gs)
 	}
 
@@ -32,7 +32,7 @@ func (o *Orchestrator) tickIdle(group config.GroupConfig, profile *profiles.Prof
 		return o.proceedPendingUpdate(group, profile, gs)
 	}
 
-	o.maybeMaintenance(group, profile, gs)
+	o.maybeReboot(group, profile, gs)
 	return o.store.Save(group.Name, gs)
 }
 
@@ -164,7 +164,7 @@ func (o *Orchestrator) proceedPendingUpdate(group config.GroupConfig, profile *p
 		return err
 	}
 
-	// Main already on target → only children remain (e.g. maintenance restarted main).
+	// Main already on target → only children remain (e.g. reboot restarted main).
 	if local != "" && !steam.Less(local, gs.TargetBuildID) {
 		return o.advanceToChildren(group, profile, gs, gs.SyncedBuildID, "syncing children next")
 	}

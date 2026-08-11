@@ -161,7 +161,7 @@ Usage:
   pelican-bindup <command> [flags]
 
 Commands:
-  run            cron tick (update orchestration + maintenance; -group to limit)
+  run            cron tick (update orchestration + reboot; -group to limit)
   status         show group phases and server states
   check-update   check Steam buildids only
   test           verify Steam API, Pelican panel, and A2S (-group to limit)

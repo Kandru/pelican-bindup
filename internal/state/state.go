@@ -27,7 +27,7 @@ type GroupState struct {
 	UpdateDetectedAt    time.Time         `yaml:"update_detected_at,omitempty"`
 	LastUpdateCheck     time.Time         `yaml:"last_update_check,omitempty"`
 	PendingChildren     []string          `yaml:"pending_children,omitempty"`
-	LastMaintenance     map[string]string `yaml:"last_maintenance,omitempty"`
+	LastReboot          map[string]string `yaml:"last_reboot,omitempty"`
 }
 
 type file struct {
@@ -112,13 +112,13 @@ func newGroupState() *GroupState {
 	return &GroupState{
 		Phase:           PhaseIdle,
 		ChildSynced:     map[string]string{},
-		LastMaintenance: map[string]string{},
+		LastReboot:    map[string]string{},
 	}
 }
 
 func normalizeGroupState(gs *GroupState) {
-	if gs.LastMaintenance == nil {
-		gs.LastMaintenance = map[string]string{}
+	if gs.LastReboot == nil {
+		gs.LastReboot = map[string]string{}
 	}
 	if gs.ChildSynced == nil {
 		gs.ChildSynced = map[string]string{}
@@ -129,7 +129,7 @@ func normalizeGroupState(gs *GroupState) {
 }
 
 func (gs *GroupState) RecordRestart(serverUUID string) {
-	gs.LastMaintenance[serverUUID] = time.Now().UTC().Format(time.RFC3339)
+	gs.LastReboot[serverUUID] = time.Now().UTC().Format(time.RFC3339)
 }
 
 func (gs *GroupState) MarkChildSynced(childUUID, buildID string) {
