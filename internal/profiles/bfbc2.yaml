@@ -3,3 +3,6 @@ query_protocol: bfbc2
 exclude_dirs:
   # Per-server instance data (configs, maps, runtime state)
   - instance
+exclude_patterns:
+  # to allow helper scripts to store their configs in the root of the repo
+  - "/*.ini"

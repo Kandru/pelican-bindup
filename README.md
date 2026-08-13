@@ -71,7 +71,7 @@ groups:
 
 ### Battlefield Bad Company 2
 
-- `bfbc2` - syncs everything; except **instance/**
+- `bfbc2` - syncs everything; except **instance/** and root **\*.ini** (`/*.ini`)
 - `bfbc2` - syncs everything; except **instante/** and **dist/**
 
 ### Counter-Strike:2

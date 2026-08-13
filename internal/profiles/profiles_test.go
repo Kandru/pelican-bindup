@@ -43,8 +43,50 @@ func TestLoadBFBC2(t *testing.T) {
 	if !p.IsExcluded("instance") || !p.IsExcluded("instance/ServerOptions.ini") {
 		t.Fatal("instance/ should be excluded")
 	}
+	if !p.IsExcluded("ServerOptions.ini") {
+		t.Fatal("root *.ini should be excluded")
+	}
+	if p.IsExcluded("mods/custom.ini") {
+		t.Fatal("subdir ini should not be excluded")
+	}
 	if p.IsExcluded("Frost.Game.Main_Win32_Final.exe") {
 		t.Fatal("game binary should not be excluded")
+	}
+}
+
+func TestExcludePathPatterns(t *testing.T) {
+	p := &Profile{
+		ExcludePatterns: []string{"instance/*.ini", "configs/*/*.cfg"},
+	}
+
+	if !p.IsExcluded("instance/ServerOptions.ini") {
+		t.Fatal("instance/*.ini should be excluded")
+	}
+	if p.IsExcluded("instance/maps/foo.bsp") {
+		t.Fatal("non-ini instance files should not be excluded")
+	}
+	if !p.IsExcluded("configs/server/bomb.cfg") {
+		t.Fatal("configs/*/*.cfg should be excluded")
+	}
+	if !p.DirContainsExclusions("instance") {
+		t.Fatal("instance/ should contain exclusions")
+	}
+	if !p.DirContainsExclusions("configs") {
+		t.Fatal("configs/ should contain exclusions")
+	}
+	if p.DirContainsExclusions("other") {
+		t.Fatal("unrelated dir should not contain exclusions")
+	}
+}
+
+func TestExcludeRootPatterns(t *testing.T) {
+	p := &Profile{ExcludePatterns: []string{"/*.ini"}}
+
+	if !p.IsExcluded("ServerOptions.ini") {
+		t.Fatal("root *.ini should be excluded")
+	}
+	if p.IsExcluded("mods/custom.ini") {
+		t.Fatal("subdir ini should not be excluded")
 	}
 }
 

@@ -5,3 +5,6 @@ exclude_dirs:
   - instance
   # custom dist data due to server modifications
   - dist
+exclude_patterns:
+  # to allow helper scripts to store their configs in the root of the repo
+  - "/*.ini"

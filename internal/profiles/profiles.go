@@ -105,7 +105,7 @@ func (p *Profile) IsExcluded(rel string) bool {
 		}
 	}
 	for _, pattern := range p.ExcludePatterns {
-		if ok, _ := filepath.Match(pattern, base); ok {
+		if matchExcludePattern(pattern, rel, base) {
 			return true
 		}
 	}
@@ -144,7 +144,52 @@ func (p *Profile) DirContainsExclusions(rel string) bool {
 			return true
 		}
 	}
+	for _, pattern := range p.ExcludePatterns {
+		pattern = normalizeExcludePattern(pattern)
+		if !strings.Contains(pattern, "/") {
+			continue
+		}
+		patternDir := pattern[:strings.LastIndex(pattern, "/")]
+		if patternDir == rel || strings.HasPrefix(patternDir, prefix) || strings.HasPrefix(rel, patternDir+"/") {
+			return true
+		}
+	}
 	return false
+}
+
+// normalizeExcludePattern strips a leading "/" used to anchor a pattern to the volume root.
+func normalizeExcludePattern(pattern string) string {
+	pattern = filepath.ToSlash(pattern)
+	if strings.HasPrefix(pattern, "/") {
+		return pattern[1:]
+	}
+	return pattern
+}
+
+// matchExcludePattern matches exclude_patterns entries:
+//   - "/*.ini" — root-level files only
+//   - "instance/*.ini" — path glob under that directory
+//   - "*.dem" — basename glob at any depth
+func matchExcludePattern(pattern, rel, base string) bool {
+	rootAnchored := strings.HasPrefix(pattern, "/")
+	pattern = normalizeExcludePattern(pattern)
+	if rootAnchored {
+		if strings.Contains(pattern, "/") {
+			ok, _ := filepath.Match(pattern, rel)
+			return ok
+		}
+		return !strings.Contains(rel, "/") && matchGlob(pattern, base)
+	}
+	if strings.Contains(pattern, "/") {
+		ok, _ := filepath.Match(pattern, rel)
+		return ok
+	}
+	return matchGlob(pattern, base)
+}
+
+func matchGlob(pattern, name string) bool {
+	ok, _ := filepath.Match(pattern, name)
+	return ok
 }
 
 // mountOnlyChild reports the mount_only directory and its immediate child name
